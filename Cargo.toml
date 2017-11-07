@@ -1,0 +1,16 @@
+[package]
+name = "voxel-rs"
+version = "0.1.0"
+# TODO: Add email
+authors = ["Technici4n"]
+
+
+[dependencies]
+gfx = "*"
+glutin = "*"
+gfx_window_glutin = "*"
+image = "*"
+texture_packer = "*"
+cgmath = "*"
+noise = "*"
+rand = "*"
