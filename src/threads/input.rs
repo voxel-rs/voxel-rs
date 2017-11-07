@@ -9,21 +9,26 @@ use std::sync::mpsc::channel;
 use std::sync::Arc;
 use std::thread;
 use std::collections::HashMap;
+use std::path::Path;
 
 use gfx::traits::FactoryExt;
 use gfx::{Device, Factory};
 use gfx::texture::{SamplerInfo, FilterMethod, WrapMode};
 use self::glutin::{GlContext, MouseCursor};
 
-use ::{CHUNK_SIZE, RENDER_DIST, ColorFormat, DepthFormat, pipe, Vertex, Transform};
+use ::{CHUNK_SIZE, ColorFormat, DepthFormat, pipe, Vertex, Transform};
 use ::core::messages::client::{ToInput, ToMeshing, ToNetwork};
 use ::texture::{load_textures};
 use ::block::{BlockRegistry, Chunk, ChunkPos, create_block_air, create_block_cube};
 use ::render::{camera, frames};
+use ::config;
 
 const CLEAR_COLOR: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 
 pub fn start() {
+    // Load config
+    std::fs::create_dir_all(Path::new("cfg")).unwrap();
+    let config = config::load_config(Path::new("cfg/cfg.toml"));
 
     // Window creation
     let mut events_loop = glutin::EventsLoop::new();
@@ -117,7 +122,7 @@ pub fn start() {
 
     // TODO: Frame buffer size and window size might be different
     let (w, h) = window.get_inner_size().unwrap();
-    let mut cam = camera::Camera::new(w, h);
+    let mut cam = camera::Camera::new(w, h, &config);
     let mut keys = ::input::KeyboardState::new();
 
     window.set_cursor(MouseCursor::Crosshair);
@@ -220,9 +225,10 @@ pub fn start() {
             player_chunk.2 as i64 / CHUNK_SIZE as i64);
 
         // Rendering
-        for i in -RENDER_DIST..(RENDER_DIST+1) {
-            for j in -RENDER_DIST..(RENDER_DIST+1) {
-                for k in -RENDER_DIST..(RENDER_DIST+1) {
+        let render_dist = config.render_distance;
+        for i in -render_dist..(render_dist+1) {
+            for j in -render_dist..(render_dist+1) {
+                for k in -render_dist..(render_dist+1) {
                     let pck = &player_chunk;
                     let pos = ChunkPos(pck.0 + i, pck.1 + j, pck.2 + k);
                     chunks.entry(pos.clone()).or_insert_with(|| {
@@ -238,9 +244,9 @@ pub fn start() {
 
         chunks.retain(|pos, _| {
             if
-                abs(pos.0 - player_chunk.0) > RENDER_DIST ||
-                abs(pos.1 - player_chunk.1) > RENDER_DIST ||
-                abs(pos.2 - player_chunk.2) > RENDER_DIST {
+                abs(pos.0 - player_chunk.0) > render_dist ||
+                abs(pos.1 - player_chunk.1) > render_dist ||
+                abs(pos.2 - player_chunk.2) > render_dist {
 
                 meshing_tx.send(ToMeshing::RemoveChunk(pos.clone())).unwrap();
                 false

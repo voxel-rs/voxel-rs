@@ -13,32 +13,35 @@ const MOVE_UP: u32 = 57;
 const MOVE_DOWN: u32 = 42;
 const CONTROL: u32 = 29;
 
-const DEGS_PER_PIXEL: Deg<f32> = Deg(0.2);
-const METERS_PER_SEC: f32 = 5.0;
-
 pub struct Camera {
     position: Vector3<f32>,
     yaw: Deg<f32>,
     pitch: Deg<f32>,
     win_w: u32,
     win_h: u32,
+    mouse_speed: Deg<f32>,
+    player_speed: f32,
+    ctrl_speedup: f32,
 }
 
 impl Camera {
-    pub fn new(win_w: u32, win_h: u32) -> Camera {
+    pub fn new(win_w: u32, win_h: u32, config: &::config::Config) -> Camera {
         Camera {
             position: Vector3::from([0.0, 0.0, 4.0]),
             yaw: Deg(0.0),
             pitch: Deg(0.0),
             win_w,
             win_h,
+            mouse_speed: Deg(config.mouse_speed),
+            player_speed: config.player_speed,
+            ctrl_speedup: config.ctrl_speedup,
         }
     }
 
     // TODO: Allow mouse inverting
     pub fn update_cursor(&mut self, dx: f32, dy: f32) {
-        self.yaw += -DEGS_PER_PIXEL * (dx as f32);
-        self.pitch += -DEGS_PER_PIXEL * (dy as f32);
+        self.yaw += -self.mouse_speed * (dx as f32);
+        self.pitch += -self.mouse_speed * (dy as f32);
 
         // Ensure the pitch stays within [-90; 90]
         if self.pitch < Deg(-90.0) {
@@ -59,21 +62,21 @@ impl Camera {
     }
 
     pub fn tick(&mut self, dt: f32, keys: &KeyboardState) {
-        let mut speedup = 1.0f32;
+        let mut speedup = 1.0;
         if keys.is_key_pressed(CONTROL)
-        { speedup = 15.0; }
+        { speedup = self.ctrl_speedup; }
         if keys.is_key_pressed(MOVE_FORWARD)
-        { self.position += speedup * self.get_mv_direction(Deg(0.0)).normalize() * (METERS_PER_SEC * dt); }
+        { self.position += speedup * self.get_mv_direction(Deg(0.0)).normalize() * (self.player_speed * dt); }
         if keys.is_key_pressed(MOVE_LEFT)
-        { self.position += speedup * self.get_mv_direction(Deg(90.0)).normalize() * (METERS_PER_SEC * dt); }
+        { self.position += speedup * self.get_mv_direction(Deg(90.0)).normalize() * (self.player_speed * dt); }
         if keys.is_key_pressed(MOVE_BACKWARD)
-        { self.position += speedup * self.get_mv_direction(Deg(180.0)).normalize() * (METERS_PER_SEC * dt); }
+        { self.position += speedup * self.get_mv_direction(Deg(180.0)).normalize() * (self.player_speed * dt); }
         if keys.is_key_pressed(MOVE_RIGHT)
-        { self.position += speedup * self.get_mv_direction(Deg(270.0)).normalize() * (METERS_PER_SEC * dt); }
+        { self.position += speedup * self.get_mv_direction(Deg(270.0)).normalize() * (self.player_speed * dt); }
         if keys.is_key_pressed(MOVE_UP)
-        { self.position.y += speedup * METERS_PER_SEC * dt; }
+        { self.position.y += speedup * self.player_speed * dt; }
         if keys.is_key_pressed(MOVE_DOWN)
-        { self.position.y -= speedup * METERS_PER_SEC * dt; }
+        { self.position.y -= speedup * self.player_speed * dt; }
     }
 
     fn get_aspect_ratio(&self) -> f32 {

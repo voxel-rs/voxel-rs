@@ -33,7 +33,8 @@ pub fn start(rx: Receiver<ToNetwork>, meshing_tx: Sender<ToMeshing>) {
                 }
                 let theta: f64 = rng.gen_range(0.0, 2.0*3.14);
                 let r: usize = rng.gen_range(0, CHUNK_SIZE/2 - 5);
-                let (x, y) = ((r as f64*theta.cos()) as usize + CHUNK_SIZE/2, (r as f64*theta.sin()) as usize + CHUNK_SIZE/2);
+                let (x, y) = ((r as f64*theta.cos()) as i64 + CHUNK_SIZE as i64/2, (r as f64*theta.sin()) as i64 + CHUNK_SIZE as i64/2);
+                let (x, y) = (x as usize, y as usize);
                 // Spawn tree trunk
                 for i in 0..6 {
                     let height = (150.0*perlin.get([

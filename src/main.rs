@@ -1,8 +1,9 @@
 #[macro_use]
 extern crate gfx;
+#[macro_use]
+extern crate serde_derive;
 
 const CHUNK_SIZE: usize = 32;
-const RENDER_DIST: i64 = 5;
 
 // TODO: refactor ?
 type ColorFormat = gfx::format::Srgba8;
@@ -30,6 +31,7 @@ gfx_defines! {
 }
 
 mod block;
+mod config;
 mod core;
 mod input;
 mod render;
