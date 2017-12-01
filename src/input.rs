@@ -1,9 +1,11 @@
+use piston::input::keyboard::Key;
+
 use std::collections::HashMap;
 
 /// Holds the keyboard state.
 pub struct KeyboardState {
     /// `true` is pressed, `false` is released
-    map: HashMap<u32, bool>,
+    map: HashMap<Key, bool>,
 }
 
 impl KeyboardState {
@@ -13,11 +15,11 @@ impl KeyboardState {
         }
     }
 
-    pub fn is_key_pressed(&self, keycode: u32) -> bool {
+    pub fn is_key_pressed(&self, keycode: Key) -> bool {
         *self.map.get(&keycode).unwrap_or(&false)
     }
 
-    pub fn update_key(&mut self, keycode: u32, pressed: bool) {
+    pub fn update_key(&mut self, keycode: Key, pressed: bool) {
         self.map.insert(keycode, pressed);
     }
 

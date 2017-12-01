@@ -23,6 +23,8 @@ use ::block::{BlockRegistry, Chunk, ChunkPos, create_block_air, create_block_cub
 use ::render::{camera, frames};
 use ::config;
 
+use threads::utility::key_from_u64;
+
 const CLEAR_COLOR: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 
 pub fn start() {
@@ -160,7 +162,7 @@ pub fn start() {
                             ElementState::Released => false,
                         };
                         //println!("Key {} pressed ? {}", scancode, pressed);
-                        keys.update_key(scancode, pressed);
+                        keys.update_key(key_from_u64(scancode as u64).unwrap(), pressed);
                     },
                     WindowEvent::Focused(foc) => {
                         focused = foc;

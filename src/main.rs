@@ -2,6 +2,7 @@
 extern crate gfx;
 #[macro_use]
 extern crate serde_derive;
+extern crate piston;
 
 const CHUNK_SIZE: usize = 32;
 

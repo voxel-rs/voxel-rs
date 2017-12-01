@@ -3,15 +3,16 @@ extern crate cgmath;
 use self::cgmath::prelude::*;
 use self::cgmath::{Deg, Euler, Matrix4, Quaternion, Vector3, perspective};
 use ::input::KeyboardState;
+use piston::input::keyboard::Key;
 
 // TODO: Don't hardcode this
-const MOVE_FORWARD: u32 = 17;
-const MOVE_LEFT: u32 = 30;
-const MOVE_BACKWARD: u32 = 31;
-const MOVE_RIGHT: u32 = 32;
-const MOVE_UP: u32 = 57;
-const MOVE_DOWN: u32 = 42;
-const CONTROL: u32 = 29;
+const MOVE_FORWARD: Key = Key::W;
+const MOVE_LEFT: Key = Key::A;
+const MOVE_BACKWARD: Key = Key::S;
+const MOVE_RIGHT: Key = Key::D;
+const MOVE_UP: Key = Key::Q;
+const MOVE_DOWN: Key = Key::Z;
+const CONTROL: Key = Key::LCtrl;
 
 pub struct Camera {
     position: Vector3<f32>,
