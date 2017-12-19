@@ -1,18 +1,19 @@
 extern crate noise;
 extern crate rand;
-use self::noise::{NoiseModule, Perlin};
 
-use std::sync::mpsc::{Sender, Receiver};
-use self::rand::{SeedableRng, Rng};
-use ::core::messages::client::{ToMeshing, ToNetwork};
 use ::block::BlockId;
 use ::CHUNK_SIZE;
+use ::core::messages::network::{ToClient, ToServer};
+use ::network::{NetworkReceiver, NetworkSender};
+use self::rand::{SeedableRng, Rng};
+use self::noise::{NoiseModule, Perlin};
 
-pub fn start(rx: Receiver<ToNetwork>, meshing_tx: Sender<ToMeshing>) {
+pub fn start<R, S>(client_rx: R, client_tx: S) 
+    where R: NetworkReceiver<ToServer>, S: NetworkSender<ToClient> {
     let perlin = Perlin::new();
-    for message in rx {
+    while let Ok(message) = client_rx.recv() {
         match message {
-            ToNetwork::NewChunk(pos) => {
+            ToServer::NewChunk(pos) => {
                 let mut chunk = [[[BlockId::from(0); CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE];
                 let mut rng = rand::StdRng::from_seed(&[((pos.0*4242424242 + pos.2)%1_000_000_007).abs() as usize]);
                 for i in 0..CHUNK_SIZE {
@@ -45,9 +46,7 @@ pub fn start(rx: Receiver<ToNetwork>, meshing_tx: Sender<ToMeshing>) {
                         chunk[x][(height - pos.1*CHUNK_SIZE as i64 + i) as usize][y] = BlockId::from(3);
                     }
                 }
-
-                println!("Network: processed chunk @ {:?}", pos);
-                meshing_tx.send(ToMeshing::NewChunk(pos, Box::new(chunk))).unwrap();
+                client_tx.send(ToClient::NewChunk(pos, Box::new(chunk))).unwrap();
             }
         }
     }

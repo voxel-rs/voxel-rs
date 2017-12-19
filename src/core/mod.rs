@@ -16,4 +16,16 @@ pub mod messages {
             RemoveChunk(ChunkPos),
         }
     }
+
+    pub mod network {
+        use ::block::{ChunkArray, ChunkPos};
+
+        pub enum ToClient {
+            NewChunk(ChunkPos, Box<ChunkArray>),
+        }
+
+        pub enum ToServer {
+            NewChunk(ChunkPos),
+        }
+    }
 }

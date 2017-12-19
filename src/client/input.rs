@@ -83,12 +83,16 @@ pub fn start() {
         let (meshing_t, meshing_r) = channel();
         // Network
         let (network_t, network_r) = channel();
+        // Client -> Server
+        let (client_tx, server_rx) = ::network::network_channel();
+        // Server -> Client
+        let (server_tx, client_rx) = ::network::network_channel();
 
         {
             let input_tx = input_t.clone();
             let br2 = br.clone();
             thread::spawn(move || {
-                ::threads::meshing::start(meshing_r, input_tx, br2);
+                ::client::meshing::start(meshing_r, input_tx, br2);
             });
             println!("Started meshing thread");
         }
@@ -96,9 +100,15 @@ pub fn start() {
         {
             let meshing_tx = meshing_t.clone();
             thread::spawn(move || {
-                ::threads::network::start(network_r, meshing_tx);
+                ::client::network::start(network_r, meshing_tx, server_rx, server_tx);
             });
             println!("Started network thread");
+        }
+
+        {
+            thread::spawn(move || {
+                ::server::network::start(client_rx, client_tx);
+            });
         }
 
         rx = input_r;

@@ -31,13 +31,15 @@ gfx_defines! {
 }
 
 mod block;
+mod client;
 mod config;
 mod core;
 mod input;
+mod network;
 mod render;
+mod server;
 mod texture;
-mod threads;
 
 fn main() {
-    threads::input::start();
+    client::input::start();
 }
