@@ -1,3 +1,4 @@
 /cfg/
 /target/
 **/*.rs.bk
+out.txt

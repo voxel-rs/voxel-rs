@@ -8,6 +8,12 @@ use std::io::{Read, Write};
 /// Temporary way to configure the engine
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Config {
+    #[serde(default = "default_player_x")]
+    pub player_x: f32,
+    #[serde(default = "default_player_y")]
+    pub player_y: f32,
+    #[serde(default = "default_player_z")]
+    pub player_z: f32,
     #[serde(default = "default_mouse_speed")]
     pub mouse_speed: f32,
     #[serde(default = "default_player_speed")]
@@ -16,6 +22,18 @@ pub struct Config {
     pub ctrl_speedup: f32,
     #[serde(default = "default_render_distance")]
     pub render_distance: i64,
+}
+
+fn default_player_x() -> f32 {
+    0.0
+}
+
+fn default_player_y() -> f32 {
+    -100.0
+}
+
+fn default_player_z() -> f32 {
+    0.0
 }
 
 fn default_mouse_speed() -> f32 {

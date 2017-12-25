@@ -27,7 +27,7 @@ pub struct Camera {
 impl Camera {
     pub fn new(win_w: u32, win_h: u32, config: &::config::Config) -> Camera {
         Camera {
-            position: Vector3::from([0.0, 0.0, 4.0]),
+            position: Vector3::from([config.player_x, config.player_y, config.player_z]),
             yaw: Deg(0.0),
             pitch: Deg(0.0),
             win_w,
