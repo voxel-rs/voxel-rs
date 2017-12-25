@@ -8,8 +8,8 @@ use ::{CHUNK_SIZE};
 use std;
 
 enum ChunkState {
-    Pending,
-    Received(bool, Chunk),
+    Received(usize, Chunk),
+    Meshed(Chunk),
 }
 
 type ChunkMap = HashMap<ChunkPos, RefCell<ChunkState>>;
@@ -25,9 +25,13 @@ const ADJ_CHUNKS: [[i64; 3]; 6] = [
 
 pub fn start(rx: Receiver<ToMeshing>, input_tx: Sender<ToInput>, block_registry: Arc<BlockRegistry>) {
     let mut chunks: ChunkMap = HashMap::new();
+    let mut dummy = Chunk {
+        blocks: Box::new([[[::block::BlockId::from(0); CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE]),
+        sides: Box::new([[[0xFF; CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE]),
+    };
 
     loop {
-        println!("Meshing: new loop run");
+        //println!("Meshing: new loop run");
 
         // Receive all pending updates
         match rx.recv() {
@@ -41,23 +45,35 @@ pub fn start(rx: Receiver<ToMeshing>, input_tx: Sender<ToInput>, block_registry:
 
         // Update chunks
         'all_chunks: for (pos, state) in &chunks {
-            if let ChunkState::Received(ref mut meshed @ false, ref mut chunk) = *state.borrow_mut() {
+            if let ChunkState::Received(fragment_count, ref mut chunk) = *state.borrow_mut() {
+                //println!("fragment_count {} @ pos {:?}", fragment_count, pos);
+                if fragment_count < CHUNK_SIZE*CHUNK_SIZE {
+                    continue;
+                }
+                //println!("Meshing: processing chunk @ {:?}", pos);
                 for &adj in &ADJ_CHUNKS {
                     match chunks.get(&ChunkPos(pos.0 + adj[0], pos.1 + adj[1], pos.2 + adj[2])) {
-                        Some(ref cell) => if let ChunkState::Pending = *cell.borrow() {
-                            continue 'all_chunks;
+                        Some(ref cell) => {
+                            if let ChunkState::Received(fragment_count, _) = *cell.borrow() {
+                                //println!("--> adj @ {:?} has {} fragments", &ChunkPos(pos.0 + adj[0], pos.1 + adj[1], pos.2 + adj[2]), fragment_count);
+                                if fragment_count < CHUNK_SIZE*CHUNK_SIZE {
+                                    continue 'all_chunks;
+                                }
+                            }
                         },
                         _ => continue 'all_chunks,
                     }
                 }
+
+                println!("Meshing: rendering chunk @ {:?}", pos);
 
                 {
                     let sides = &mut chunk.sides;
                     let blocks = &chunk.blocks;
                     for side in 0..6 {
                         let adj = ADJ_CHUNKS[side];
-                        if let ChunkState::Received(_, ref c) = *chunks.get(&ChunkPos(pos.0 + adj[0], pos.1 + adj[1], pos.2 + adj[2])).unwrap().borrow_mut() {
-                            for (i1, i2) in get_range(adj[0], false).zip(get_range(adj[0], true)) {
+                        match *chunks.get(&ChunkPos(pos.0 + adj[0], pos.1 + adj[1], pos.2 + adj[2])).unwrap().borrow() {
+                            ChunkState::Received(_, ref c) => for (i1, i2) in get_range(adj[0], false).zip(get_range(adj[0], true)) {
                                 for (j1, j2) in get_range(adj[1], false).zip(get_range(adj[1], true)) {
                                     for (k1, k2) in get_range(adj[2], false).zip(get_range(adj[2], true)) {
                                         if !block_registry.get_block(c.blocks[i1][j1][k1]).is_opaque() {
@@ -65,7 +81,16 @@ pub fn start(rx: Receiver<ToMeshing>, input_tx: Sender<ToInput>, block_registry:
                                         }
                                     }
                                 }
-                            }
+                            },
+                            ChunkState::Meshed(ref c) => for (i1, i2) in get_range(adj[0], false).zip(get_range(adj[0], true)) {
+                                for (j1, j2) in get_range(adj[1], false).zip(get_range(adj[1], true)) {
+                                    for (k1, k2) in get_range(adj[2], false).zip(get_range(adj[2], true)) {
+                                        if !block_registry.get_block(c.blocks[i1][j1][k1]).is_opaque() {
+                                            sides[i2][j2][k2] ^= 1 << side;
+                                        }
+                                    }
+                                }
+                            },
                         }
                     }
                     let sz = CHUNK_SIZE as i64;
@@ -87,7 +112,20 @@ pub fn start(rx: Receiver<ToMeshing>, input_tx: Sender<ToInput>, block_registry:
                 }
                 input_tx.send(ToInput::NewChunkBuffer(pos.clone(), chunk.calculate_mesh(&block_registry))).unwrap();
                 println!("Meshing: updated chunk @ {:?}", pos);
-                *meshed = true;
+
+                ::std::mem::swap(&mut dummy, chunk);
+            }
+            else {
+                continue;
+            }
+
+            let mut new_state = ChunkState::Meshed(dummy);
+            ::std::mem::swap(&mut new_state, &mut *state.borrow_mut());
+            if let ChunkState::Received(_, dummy_chunks) = new_state {
+                dummy = dummy_chunks;
+            }
+            else {
+                unreachable!();
             }
         }
     }
@@ -96,20 +134,26 @@ pub fn start(rx: Receiver<ToMeshing>, input_tx: Sender<ToInput>, block_registry:
 fn handle_message(chunks: &mut ChunkMap, message: ToMeshing) {
     match message {
         ToMeshing::AllowChunk(pos) => {
-            chunks.insert(pos, RefCell::new(ChunkState::Pending));
-        },
-        // TODO: Ensure the chunk has been allowed
-        ToMeshing::NewChunk(pos, chunk) => {
-            chunks.insert(pos, RefCell::new(ChunkState::Received(false, Chunk {
-                blocks: chunk,
+            chunks.insert(pos, RefCell::new(ChunkState::Received(0, Chunk {
+                blocks: Box::new([[[::block::BlockId::from(0); CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE]),
                 sides: Box::new([[[0xFF; CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE]),
             })));
+        },
+        // TODO: Ensure the chunk has been allowed
+        ToMeshing::NewChunkFragment(pos, fpos, frag) => {
+            if let Some(state) = chunks.get(&pos) {
+                if let ChunkState::Received(ref mut fragment_count, ref mut chunk) = *state.borrow_mut() {
+                    *fragment_count += 1;
+                    //println!("inc!");
+                    chunk.blocks[fpos.0][fpos.1] = (*frag).clone();
+                }
+            }
         },
         ToMeshing::RemoveChunk(pos) => {
             chunks.remove(&pos);
         },
     }
-    println!("Meshing: processed message");
+    //println!("Meshing: processed message");
 }
 
 fn get_range(x: i64, reversed: bool) -> std::ops::Range<usize> {

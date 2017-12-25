@@ -1,6 +1,6 @@
 pub mod messages {
     pub mod client {
-        use ::block::{ChunkArray, ChunkPos};
+        use ::block::{ChunkFragment, ChunkPos, FragmentPos};
 
         pub enum ToNetwork {
             NewChunk(ChunkPos),
@@ -12,18 +12,20 @@ pub mod messages {
 
         pub enum ToMeshing {
             AllowChunk(ChunkPos),
-            NewChunk(ChunkPos, Box<ChunkArray>),
+            NewChunkFragment(ChunkPos, FragmentPos, Box<ChunkFragment>),
             RemoveChunk(ChunkPos),
         }
     }
 
     pub mod network {
-        use ::block::{ChunkArray, ChunkPos};
+        use ::block::{ChunkFragment, ChunkPos, FragmentPos};
 
+        #[derive(Serialize, Deserialize)]
         pub enum ToClient {
-            NewChunk(ChunkPos, Box<ChunkArray>),
+            NewChunkFragment(ChunkPos, FragmentPos, Box<ChunkFragment>),
         }
 
+        #[derive(Serialize, Deserialize)]
         pub enum ToServer {
             NewChunk(ChunkPos),
         }

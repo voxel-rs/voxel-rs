@@ -11,14 +11,15 @@ pub trait Block {
 }
 
 /// A block's id
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct BlockId(pub u16);
 
 pub struct BlockRegistry {
     blocks: Vec<BlockRef>,
 }
 
-pub type ChunkArray = [[[BlockId; CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE];
+pub type ChunkFragment = [BlockId; CHUNK_SIZE];
+pub type ChunkArray = [[ChunkFragment; CHUNK_SIZE]; CHUNK_SIZE];
 pub type BlockRef = Box<Block + Send + Sync>;
 
 /// Chunk type
@@ -30,8 +31,11 @@ pub struct Chunk {
 }
 
 // TODO: Struct instead ?
-#[derive(Hash, PartialEq, Eq, Clone, Debug)]
+#[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub struct ChunkPos(pub i64, pub i64, pub i64);
+
+#[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
+pub struct FragmentPos(pub usize, pub usize);
 
 pub struct BlockCube {
     uvs: [[[f32; 2]; 4]; 6],

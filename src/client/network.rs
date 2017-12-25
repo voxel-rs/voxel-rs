@@ -1,11 +1,17 @@
+extern crate bincode;
+extern crate cobalt;
+
 use std::sync::mpsc::{Sender, Receiver, TryRecvError};
 use ::core::messages::client::{ToMeshing, ToNetwork};
 use ::core::messages::network::{ToClient, ToServer};
-use ::network::{NetworkReceiver, NetworkSender};
 
-pub fn start<R, S>(client_rx: Receiver<ToNetwork>, meshing_tx: Sender<ToMeshing>, server_rx: R, server_tx: S) where
-    R: NetworkReceiver<ToClient>,
-    S: NetworkSender<ToServer> {
+use self::cobalt::{Client, ClientEvent, MessageKind, PacketModifier, Socket, RateLimiter};
+
+pub fn start<S, R, M>(client_rx: Receiver<ToNetwork>, meshing_tx: Sender<ToMeshing>, mut client: Client<S, R, M>) where
+    S: Socket,
+    R: RateLimiter,
+    M: PacketModifier {
+
     loop {
         let mut active = false;
 
@@ -15,8 +21,8 @@ pub fn start<R, S>(client_rx: Receiver<ToNetwork>, meshing_tx: Sender<ToMeshing>
                 Ok(message) => match message {
                     ToNetwork::NewChunk(pos) => {
                         println!("Network: sent chunk @ {:?}", pos);
-                        //meshing_tx.send(ToMeshing::NewChunk(pos, Box::new(chunk))).unwrap();
-                        server_tx.send(ToServer::NewChunk(pos)).unwrap();
+                        let out = ToServer::NewChunk(pos);
+                        client.connection().unwrap().send(MessageKind::Reliable, bincode::serialize(&out, bincode::Infinite).unwrap());
                     },
                 },
                 Err(kind) => match kind {
@@ -28,14 +34,22 @@ pub fn start<R, S>(client_rx: Receiver<ToNetwork>, meshing_tx: Sender<ToMeshing>
             active = true;
         }
 
+        client.send(false).unwrap();
+
         // Messages from server
         loop {
-            match server_rx.try_recv() {
-                Ok(message) => match message {
-                    ToClient::NewChunk(pos, chunk) => {
-                        println!("Network: received chunk @ {:?}", pos);
-                        meshing_tx.send(ToMeshing::NewChunk(pos, chunk)).unwrap();
-                    },
+            match client.receive() {
+                Ok(message) => {
+                    //println!("Network: received event {:?}", message);
+                    match message {
+                        ClientEvent::Message(bytes) => match bincode::deserialize(bytes.as_ref()).unwrap() {
+                            ToClient::NewChunkFragment(pos, fpos, chunk) => {
+                                //println!("Network: received chunk fragment @ {:?}, {:?}", pos, fpos);
+                                meshing_tx.send(ToMeshing::NewChunkFragment(pos, fpos, chunk)).unwrap();
+                            }
+                        },
+                        _ => {},
+                    }
                 },
                 Err(kind) => match kind {
                     // TODO: something better than panicking
@@ -48,7 +62,8 @@ pub fn start<R, S>(client_rx: Receiver<ToNetwork>, meshing_tx: Sender<ToMeshing>
 
         // Sleep for "a while" if not active, to save CPU
         if !active {
-            ::std::thread::sleep(::std::time::Duration::from_millis(1));
+            //::std::thread::sleep(::std::time::Duration::from_millis(1));
+            ();
         }
     }
 }

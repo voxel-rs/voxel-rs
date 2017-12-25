@@ -35,7 +35,6 @@ mod client;
 mod config;
 mod core;
 mod input;
-mod network;
 mod render;
 mod server;
 mod texture;

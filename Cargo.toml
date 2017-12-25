@@ -17,3 +17,9 @@ rand = "*"
 serde = "*"
 serde_derive = "*"
 toml = "*"
+cobalt = "*"
+bincode = "*"
+net2 = "*"
+
+[patch.crates-io]
+cobalt = { git = 'https://github.com/Technici4n/cobalt-rs' }

@@ -1,8 +1,10 @@
+extern crate cobalt;
 extern crate gfx;
 extern crate glutin;
 extern crate gfx_window_glutin;
 extern crate image;
 extern crate cgmath;
+extern crate net2;
 
 use std;
 use std::sync::mpsc::channel;
@@ -15,6 +17,7 @@ use gfx::traits::FactoryExt;
 use gfx::{Device, Factory};
 use gfx::texture::{SamplerInfo, FilterMethod, WrapMode};
 use self::glutin::{GlContext, MouseCursor};
+use self::net2::UdpSocketExt;
 
 use ::{CHUNK_SIZE, ColorFormat, DepthFormat, pipe, Vertex, Transform};
 use ::core::messages::client::{ToInput, ToMeshing, ToNetwork};
@@ -77,16 +80,17 @@ pub fn start() {
     let network_tx;
     // Start threads
     {
+        use self::cobalt::{BinaryRateLimiter, Client, Config, NoopPacketModifier, Server, UdpSocket};
         // Input
         let (input_t, input_r) = channel();
         // Meshing
         let (meshing_t, meshing_r) = channel();
         // Network
         let (network_t, network_r) = channel();
-        // Client -> Server
-        let (client_tx, server_rx) = ::network::network_channel();
-        // Server -> Client
-        let (server_tx, client_rx) = ::network::network_channel();
+        // Client-server
+        let cfg = Config::default();
+        let mut server = Server::<UdpSocket, BinaryRateLimiter, NoopPacketModifier>::new(cfg);
+        let mut client = Client::<UdpSocket, BinaryRateLimiter, NoopPacketModifier>::new(cfg);
 
         {
             let input_tx = input_t.clone();
@@ -100,14 +104,30 @@ pub fn start() {
         {
             let meshing_tx = meshing_t.clone();
             thread::spawn(move || {
-                ::client::network::start(network_r, meshing_tx, server_rx, server_tx);
+                thread::sleep(std::time::Duration::from_millis(2000));
+                client.connect("127.0.0.1:1106").expect("Failed to bind to socket.");
+                client.socket().unwrap().as_raw_udp_socket().set_recv_buffer_size(1024*1024*8).unwrap();
+                client.socket().unwrap().as_raw_udp_socket().set_send_buffer_size(1024*1024*8).unwrap();
+                ::client::network::start(network_r, meshing_tx, client);
+                //client.disconnect();
             });
             println!("Started network thread");
         }
 
         {
             thread::spawn(move || {
-                ::server::network::start(client_rx, client_tx);
+                match server.listen("0.0.0.0:1106") {
+                    Ok(()) =>  {
+                        server.socket().unwrap().as_raw_udp_socket().set_recv_buffer_size(1024*1024*8).unwrap();
+                        server.socket().unwrap().as_raw_udp_socket().set_send_buffer_size(1024*1024*8).unwrap();
+                        ::server::network::start(server);
+                        //server.shutdown();
+                    },
+                    Err(e) => {
+                        println!("Failed to bind to socket. Error : {:?}", e);
+                    }
+                }
+                //server.shutdown();
             });
         }
 
@@ -200,6 +220,7 @@ pub fn start() {
             match message {
                 ToInput::NewChunkBuffer(pos, vertices) => {
                     assert!(vertices.len()%3 == 0); // Triangles should have 3 vertices
+                    println!("Input: received vertex buffer @ {:?}", pos);
                     if let Some(buffer @ &mut None) = chunks.get_mut(&pos) {
                         *buffer = Some(factory.create_vertex_buffer_with_slice(&vertices, ()));
                     }
