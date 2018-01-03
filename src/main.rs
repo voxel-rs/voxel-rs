@@ -38,6 +38,7 @@ mod input;
 mod render;
 mod server;
 mod texture;
+mod util;
 
 fn main() {
     client::input::start();

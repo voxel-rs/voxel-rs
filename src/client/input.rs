@@ -88,7 +88,13 @@ pub fn start() {
         // Network
         let (network_t, network_r) = channel();
         // Client-server
-        let cfg = Config::default();
+        let cfg = Config {
+            send_rate: 10000, // TODO: This is not suitable for normal connections.
+            packet_max_size: 576, // 576 is the IPv4 "minimum reassembly buffer size"
+            connection_init_threshold: ::std::time::Duration::new(1, 0),
+            connection_drop_threshold: ::std::time::Duration::new(4, 0),
+            ..Config::default()
+        };
         let mut server = Server::<UdpSocket, BinaryRateLimiter, NoopPacketModifier>::new(cfg);
         let mut client = Client::<UdpSocket, BinaryRateLimiter, NoopPacketModifier>::new(cfg);
 
@@ -196,6 +202,11 @@ pub fn start() {
                         focused = foc;
                         if foc {
                             keys.clear();
+                        }
+                    },
+                    WindowEvent::MouseInput { button, state, .. } => {
+                        if button == MouseButton::Left && state == ElementState::Pressed {
+                            println!("Player position: {:?}", cam.get_pos());
                         }
                     },
                     _ => {},

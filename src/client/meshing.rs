@@ -29,18 +29,19 @@ pub fn start(rx: Receiver<ToMeshing>, input_tx: Sender<ToInput>, block_registry:
         blocks: Box::new([[[::block::BlockId::from(0); CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE]),
         sides: Box::new([[[0xFF; CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE]),
     };
+    let mut dropping = false;
 
     loop {
         //println!("Meshing: new loop run");
 
         // Receive all pending updates
         match rx.recv() {
-            Ok(message) => handle_message(&mut chunks, message),
+            Ok(message) => handle_message(&mut chunks, message, &mut dropping),
             Err(_) => return,
         }
 
         while let Ok(message) = rx.try_recv() {
-            handle_message(&mut chunks, message);
+            handle_message(&mut chunks, message, &mut dropping);
         }
 
         // Update chunks
@@ -50,7 +51,6 @@ pub fn start(rx: Receiver<ToMeshing>, input_tx: Sender<ToInput>, block_registry:
                 if fragment_count < CHUNK_SIZE*CHUNK_SIZE {
                     continue;
                 }
-                //println!("Meshing: processing chunk @ {:?}", pos);
                 for &adj in &ADJ_CHUNKS {
                     match chunks.get(&ChunkPos(pos.0 + adj[0], pos.1 + adj[1], pos.2 + adj[2])) {
                         Some(ref cell) => {
@@ -131,9 +131,11 @@ pub fn start(rx: Receiver<ToMeshing>, input_tx: Sender<ToInput>, block_registry:
     }
 }
 
-fn handle_message(chunks: &mut ChunkMap, message: ToMeshing) {
+fn handle_message(chunks: &mut ChunkMap, message: ToMeshing, dropping: &mut bool) {
     match message {
         ToMeshing::AllowChunk(pos) => {
+            *dropping = false;
+            println!("Meshing: allowed chunk @ {:?}", pos);
             chunks.insert(pos, RefCell::new(ChunkState::Received(0, Chunk {
                 blocks: Box::new([[[::block::BlockId::from(0); CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE]),
                 sides: Box::new([[[0xFF; CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE]),
@@ -142,14 +144,23 @@ fn handle_message(chunks: &mut ChunkMap, message: ToMeshing) {
         // TODO: Ensure the chunk has been allowed
         ToMeshing::NewChunkFragment(pos, fpos, frag) => {
             if let Some(state) = chunks.get(&pos) {
+                *dropping = false;
                 if let ChunkState::Received(ref mut fragment_count, ref mut chunk) = *state.borrow_mut() {
                     *fragment_count += 1;
-                    //println!("inc!");
+                    if *fragment_count == CHUNK_SIZE*CHUNK_SIZE {
+                        println!("Meshing: new full chunk !");
+                    }
                     chunk.blocks[fpos.0][fpos.1] = (*frag).clone();
                 }
             }
+            else if !*dropping {
+                println!("[WARNING] Meshing: dropped ChunkFragment because it was not allowed!");
+                *dropping = true;
+            }
         },
         ToMeshing::RemoveChunk(pos) => {
+            *dropping = false;
+            println!("Meshing: removed chunk @ {:?}", pos);
             chunks.remove(&pos);
         },
     }
