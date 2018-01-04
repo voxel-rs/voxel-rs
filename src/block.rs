@@ -21,6 +21,9 @@ pub struct BlockRegistry {
 pub type ChunkFragment = [BlockId; CHUNK_SIZE];
 pub type ChunkArray = [[ChunkFragment; CHUNK_SIZE]; CHUNK_SIZE];
 pub type BlockRef = Box<Block + Send + Sync>;
+/// Indicates what non-void ```ChunkFragment```s a Chunk contains.
+/// It is stored as 32-bit integers so that common functions are implemented.
+pub type ChunkInfo = [u32; CHUNK_SIZE * CHUNK_SIZE / 32];
 
 /// Chunk type
 pub struct Chunk {

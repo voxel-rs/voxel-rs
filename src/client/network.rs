@@ -97,6 +97,10 @@ impl<S, R, M> ClientImpl<S, R, M> where
                                 //println!("Network: received chunk fragment @ {:?}, {:?}", pos, fpos);
                                 self.meshing_tx.send(ToMeshing::NewChunkFragment(pos, fpos, chunk)).unwrap();
                                 self.received_messages += 1;
+                            },
+                            ToClient::NewChunkInfo(pos, info) => {
+                                println!("Received ChunkInfo @ {:?}", pos);
+                                self.meshing_tx.send(ToMeshing::NewChunkInfo(pos, info)).unwrap();
                             }
                         },
                         ClientEvent::Connection => {

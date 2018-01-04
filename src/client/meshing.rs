@@ -158,6 +158,21 @@ fn handle_message(chunks: &mut ChunkMap, message: ToMeshing, dropping: &mut bool
                 *dropping = true;
             }
         },
+        // Chunk is already initialized to air, so we just need to increase the fragment count!
+        ToMeshing::NewChunkInfo(pos, info) => {
+            if let Some(state) = chunks.get(&pos) {
+                if let ChunkState::Received(ref mut fragment_count, _) = *state.borrow_mut() {
+                    let mut void_fragments = 0;
+                    for byte in info.iter() {
+                        void_fragments += byte.count_ones() as usize;
+                    }
+                    *fragment_count += void_fragments;
+                    if *fragment_count == CHUNK_SIZE*CHUNK_SIZE {
+                        println!("Meshing: new full chunk !");
+                    }
+                }
+            }
+        }
         ToMeshing::RemoveChunk(pos) => {
             *dropping = false;
             println!("Meshing: removed chunk @ {:?}", pos);

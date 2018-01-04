@@ -86,11 +86,21 @@ impl<S, R, M> ServerImpl<S, R, M> where
                                 println!("[Server] Network: processing chunk @ {:?}", pos);
 
                                 let chunk = self.chunk_generator.generate(&pos);
+                                let mut info = [0; CHUNK_SIZE * CHUNK_SIZE / 32];
                                 for (cx, chunkyz) in chunk.iter().enumerate() {
-                                    for (cy, chunkz) in chunkyz.iter().enumerate() {
-                                        connection.send(MessageKind::Reliable, bincode::serialize(&ToClient::NewChunkFragment(pos.clone(), ::block::FragmentPos(cx, cy), Box::new(chunkz.clone())), bincode::Infinite).unwrap());
+                                    'yiter: for (cy, chunkz) in chunkyz.iter().enumerate() {
+                                        for block in chunkz.iter() {
+                                            if block.0 != 0 { // Only send the message if the ChunkFragment is not empty.
+                                                connection.send(MessageKind::Reliable, bincode::serialize(&ToClient::NewChunkFragment(pos.clone(), ::block::FragmentPos(cx, cy), Box::new(chunkz.clone())), bincode::Infinite).unwrap());
+                                                continue 'yiter;
+                                            }
+                                        }
+                                        // The ChunkFragment is empty
+                                        let index = cx * CHUNK_SIZE + cy;
+                                        info[index/32] |= 1 << index%32;
                                     }
                                 }
+                                connection.send(MessageKind::Reliable, bincode::serialize(&ToClient::NewChunkInfo(pos, info), bincode::Infinite).unwrap());
                             },
                         }
                         *last_message = Instant::now();
