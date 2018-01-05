@@ -26,6 +26,7 @@ pub type BlockRef = Box<Block + Send + Sync>;
 pub type ChunkInfo = [u32; CHUNK_SIZE * CHUNK_SIZE / 32];
 
 /// Chunk type
+#[derive(Clone)]
 pub struct Chunk {
     /// Blocks in the chunk
     pub blocks: Box<ChunkArray>,
