@@ -7,6 +7,7 @@ authors = ["Technici4n"]
 
 [dependencies]
 gfx = "*"
+gfx_device_gl = "*"
 glutin = "*"
 gfx_window_glutin = "*"
 image = "*"
