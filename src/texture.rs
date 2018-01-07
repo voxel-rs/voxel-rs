@@ -47,6 +47,7 @@ pub fn load_textures<F, R>(factory: &mut F) -> (gfx::handle::ShaderResourceView<
         "wood_side",
         "wood_top",
         "leaves",
+        "stone", 
     ];
     for &tex in &textures {
         let path = format!("assets/{}.png", tex);

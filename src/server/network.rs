@@ -154,7 +154,7 @@ impl ChunkGenerator {
         let (x, y) = ((r as f64*theta.cos()) as i64 + CHUNK_SIZE as i64/2, (r as f64*theta.sin()) as i64 + CHUNK_SIZE as i64/2);
         let (x, y) = (x as usize, y as usize);
         // Spawn tree trunk
-        for i in 0..6 {
+        for i in 0..7 {
             let height = (150.0*self.perlin.get([
                     0.005*(0.0021 + (CHUNK_SIZE as i64 * pos.0 + x as i64) as f64/3.0),
                     0.5,
@@ -162,7 +162,42 @@ impl ChunkGenerator {
             if pos.1*CHUNK_SIZE as i64 <= height + i && height+i < (pos.1+1)*CHUNK_SIZE as i64 {
                 chunk[x][(height - pos.1*CHUNK_SIZE as i64 + i) as usize][y] = BlockId::from(3);
             }
+            for ii in (-3i64)..4 {
+                for j in (-3i64)..4 {
+                    if ii.abs() != 3 && j.abs() != 3 {
+
+                        let mut k = 3;
+
+                        if ii.abs() + j.abs() <= 2 {
+                            k = 5
+                        }
+                        if ii.abs() + j.abs() <= 1 {
+                            k = 6
+                        }
+
+                        for s in 0..k {
+                            let xx = x as i64 + ii;
+                            let yy = y as i64 + j;
+                            let zz = height - pos.1*CHUNK_SIZE as i64 + s + 3;
+                            if xx >= 0 && yy >= 0 && zz >= 0 && zz < CHUNK_SIZE as i64 && xx < CHUNK_SIZE as i64 && yy < CHUNK_SIZE as i64 {
+                                let xx = xx as usize;
+                                let yy = yy as usize;
+                                let zz = zz as usize;
+                                if chunk[xx][zz][yy] == BlockId::from(0) {
+                                    chunk[xx][zz][yy] = BlockId::from(4);
+                                }
+                            } 
+
+                        }
+
+                }
+            }
         }
+
+        }
+
+
+
         Box::new(chunk)
     }
 }

@@ -137,6 +137,7 @@ impl InputImpl {
         let grass = create_block_cube(["grass_side", "grass_side", "grass_side", "grass_side", "grass_top", "dirt"], &texture_registry);
         let wood = create_block_cube(["wood_side", "wood_side", "wood_side", "wood_side", "wood_top", "wood_top"], &texture_registry);
         let leaves = create_block_cube(["leaves"; 6], &texture_registry);
+        let stone = create_block_cube(["stone"; 6], &texture_registry);
 
         let mut br = BlockRegistry::new();
         br.add_block(Box::new(air));
@@ -144,6 +145,7 @@ impl InputImpl {
         br.add_block(Box::new(grass));
         br.add_block(Box::new(wood));
         br.add_block(Box::new(leaves));
+        br.add_block(Box::new(stone));
 
         let br = Arc::new(br);
 

@@ -11,7 +11,7 @@ pub trait Block {
 }
 
 /// A block's id
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
 pub struct BlockId(pub u16);
 
 pub struct BlockRegistry {
