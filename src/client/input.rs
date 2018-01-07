@@ -114,7 +114,7 @@ impl InputImpl {
         // Window creation
         let events_loop = glutin::EventsLoop::new();
         let builder = glutin::WindowBuilder::new()
-            .with_title("Triangle example".to_string());
+            .with_title("voxel-rs".to_string());
         let context = glutin::ContextBuilder::new()
             .with_vsync(false)
             .with_gl(glutin::GlRequest::Specific(glutin::Api::OpenGl, (3, 3)));
