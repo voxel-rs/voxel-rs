@@ -74,13 +74,11 @@ impl<S, R, M> ClientImpl<S, R, M> where
         }
         if self.connected {
             while let Some(message) = self.pending_messages.pop_front() {
-                match message {
-                    ToNetwork::NewChunk(pos) => {
-                            println!("Network: sent chunk @ {:?}", pos);
-                            let out = ToServer::NewChunk(pos);
-                            self.client.connection().unwrap().send(MessageKind::Reliable, bincode::serialize(&out, bincode::Infinite).unwrap());
-                        },
-                }
+                let (out, kind) = match message {
+                    ToNetwork::SetPos(pos) => (ToServer::SetPosition(pos), MessageKind::Instant),
+                    ToNetwork::SetRenderDistance(render_distance) => (ToServer::SetRenderDistance(render_distance), MessageKind::Reliable),
+                };
+                self.client.connection().unwrap().send(kind, bincode::serialize(&out, bincode::Infinite).unwrap());
             }
         }
     }

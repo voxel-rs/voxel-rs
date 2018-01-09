@@ -196,12 +196,14 @@ impl InputImpl {
             }
 
             {
+                let (game_tx, game_rx) = channel();
+                let (network_tx, network_rx) = channel();
                 thread::spawn(move || {
                     match server.listen("0.0.0.0:1106") {
                         Ok(()) =>  {
                             server.socket().unwrap().as_raw_udp_socket().set_recv_buffer_size(1024*1024*8).unwrap();
                             server.socket().unwrap().as_raw_udp_socket().set_send_buffer_size(1024*1024*8).unwrap();
-                            ::server::network::start(server);
+                            ::server::network::start(network_rx, game_tx, server);
                             //server.shutdown();
                         },
                         Err(e) => {
@@ -210,12 +212,19 @@ impl InputImpl {
                     }
                     //server.shutdown();
                 });
+
+                thread::spawn(move || {
+                    ::server::game::start(game_rx, network_tx);
+                });
             }
 
             rx = input_r;
             meshing_tx = meshing_t;
-            network_tx= network_t;
+            network_tx = network_t;
         }
+
+        // Send render distance
+        network_tx.send(ToNetwork::SetRenderDistance(config.render_distance as u64)).unwrap();
 
         // TODO: Completely useless, this is just used to fill the PSO
         let chunk = Chunk::new();
@@ -338,6 +347,12 @@ impl InputImpl {
             }
         });
         ::std::mem::swap(&mut events_loop, &mut self.game_state.events_loop);
+
+        // Send updated position to network
+        self.network_tx.send(ToNetwork::SetPos({
+            let p = self.game_state.camera.get_pos();
+            (p.0 as f64, p.1 as f64, p.2 as f64)
+        })).unwrap();
     }
 
     pub fn process_messages(&mut self) {
@@ -382,7 +397,6 @@ impl InputImpl {
 
     pub fn fetch_close_chunks(&mut self) {
         let meshing_tx = self.meshing_tx.clone();
-        let network_tx = self.network_tx.clone();
 
         let player_chunk = self.game_state.camera.get_pos();
         let player_chunk = ChunkPos(
@@ -400,7 +414,6 @@ impl InputImpl {
                     self.rendering_state.chunks.entry(pos.clone()).or_insert_with(|| {
                         println!("Input: asked for buffer @ {:?}", pos);
                         meshing_tx.send(ToMeshing::AllowChunk(pos.clone())).unwrap();
-                        network_tx.send(ToNetwork::NewChunk(pos)).unwrap();
                         None
                     });
                 }
