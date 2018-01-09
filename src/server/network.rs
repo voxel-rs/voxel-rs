@@ -87,6 +87,7 @@ impl<S, R, M> ServerImpl<S, R, M> where
 
     pub fn process_messages(&mut self) {
         for (id, &mut(ref mut last_message, ref mut queue)) in self.queues.iter_mut() {
+            let mut should_tick = false;
             if Instant::now() - *last_message > Duration::new(0, 100_000_000) && queue.len() > 0 { // Any queued messages ?
                 let connection = self.server.connection(&id);
                 if let Ok(connection) = connection { // Open connection ?
@@ -102,6 +103,7 @@ impl<S, R, M> ServerImpl<S, R, M> where
                                         for block in chunkz.iter() {
                                             if block.0 != 0 { // Only send the message if the ChunkFragment is not empty.
                                                 connection.send(MessageKind::Reliable, bincode::serialize(&ToClient::NewChunkFragment(pos.clone(), ::block::FragmentPos(cx, cy), Box::new(chunkz.clone())), bincode::Infinite).unwrap());
+                                                should_tick = true;
                                                 continue 'yiter;
                                             }
                                         }
@@ -117,6 +119,11 @@ impl<S, R, M> ServerImpl<S, R, M> where
                     }
                 }
             }
+            /*if should_tick {
+                for _ in 0..(5 * CHUNK_SIZE * CHUNK_SIZE) {
+                    self.server.send(false).unwrap();
+                }
+            }*/
         }
     }
 

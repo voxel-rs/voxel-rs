@@ -164,7 +164,7 @@ impl InputImpl {
             let (network_t, network_r) = channel();
             // Client-server
             let cfg = Config {
-                send_rate: 10000, // TODO: This is not suitable for normal connections.
+                send_rate: 2500, // TODO: This is not suitable for normal connections.
                 packet_max_size: 576, // 576 is the IPv4 "minimum reassembly buffer size"
                 connection_init_threshold: ::std::time::Duration::new(1, 0),
                 connection_drop_threshold: ::std::time::Duration::new(4, 0),
@@ -223,9 +223,6 @@ impl InputImpl {
             network_tx = network_t;
         }
 
-        // Send render distance
-        network_tx.send(ToNetwork::SetRenderDistance(config.render_distance as u64)).unwrap();
-
         // TODO: Completely useless, this is just used to fill the PSO
         let chunk = Chunk::new();
         let cube: Vec<Vertex> = chunk.calculate_mesh(&br);
@@ -249,6 +246,15 @@ impl InputImpl {
         let cam = Camera::new(w, h, &config);
 
         window.set_cursor(MouseCursor::Crosshair);
+        
+        // Send render distance
+        network_tx.send(ToNetwork::SetRenderDistance(config.render_distance as u64)).unwrap();
+
+        // Send updated position to network
+        network_tx.send(ToNetwork::SetPos({
+            let p = cam.get_pos();
+            (p.0 as f64, p.1 as f64, p.2 as f64)
+        })).unwrap();
 
         // Create object
         Self {
@@ -347,12 +353,6 @@ impl InputImpl {
             }
         });
         ::std::mem::swap(&mut events_loop, &mut self.game_state.events_loop);
-
-        // Send updated position to network
-        self.network_tx.send(ToNetwork::SetPos({
-            let p = self.game_state.camera.get_pos();
-            (p.0 as f64, p.1 as f64, p.2 as f64)
-        })).unwrap();
     }
 
     pub fn process_messages(&mut self) {
