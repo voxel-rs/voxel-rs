@@ -49,7 +49,6 @@ impl GameImpl {
 
     fn process_message(&mut self, message: ToGame) {
         use ::core::messages::server::ToGamePlayer as Ev;
-        println!("[Server] Game Event: {:?}", message);
         match message {
             ToGame::PlayerEvent(id, ev) => match ev {
                 Ev::Connect => {
@@ -95,8 +94,9 @@ impl GameImpl {
                 }
             }
             // Remove chunks that are too far away
+            let render_distance = player.render_distance;
             player.chunks.retain(|pos, _| {
-                i64::max(i64::max((pos.0 - px).abs(), (pos.1 - py).abs()), (pos.2 - pz)) <= CHUNK_SIZE as i64
+                i64::max(i64::max((pos.0 - px).abs(), (pos.1 - py).abs()), (pos.2 - pz)) <= render_distance as i64
             });
         }
 
@@ -105,7 +105,7 @@ impl GameImpl {
             for (_, player) in players.iter() {
                 let p = player.pos;
                 let (px, py, pz) = (p.0 as i64 / CHUNK_SIZE as i64, p.1 as i64 / CHUNK_SIZE as i64, p.2 as i64 / CHUNK_SIZE as i64);
-                if i64::max(i64::max((pos.0 - px).abs(), (pos.1 - py).abs()), (pos.2 - pz)) <= CHUNK_SIZE as i64 {
+                if i64::max(i64::max((pos.0 - px).abs(), (pos.1 - py).abs()), (pos.2 - pz).abs()) <= player.render_distance as i64 {
                     return true;
                 }
             }
@@ -128,7 +128,7 @@ impl ChunkGenerator {
     }
 
     pub fn generate(&mut self, pos: &::block::ChunkPos) -> Box<::block::ChunkArray> {
-        println!("[Server] Network: processing chunk @ {:?}", pos);
+        println!("[Server] Game: generating chunk @ {:?}", pos);
 
         let mut chunk = [[[BlockId::from(0); CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE];
         let mut rng = rand::StdRng::from_seed(&[((pos.0*4242424242 + pos.2)%1_000_000_007).abs() as usize]);
