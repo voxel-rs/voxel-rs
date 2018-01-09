@@ -79,8 +79,8 @@ impl GameImpl {
                         let pos = ChunkPos(px + x, py + y, pz + z);
                         player.chunks.entry(pos.clone()).or_insert({
                             let chunk = self.chunks.entry(pos.clone()).or_insert(self.generator.generate(&pos));
-                            self.network_tx.send(ToNetwork::NewChunk(*id, pos, chunk.clone())).unwrap();
                             println!("[Server] Generated chunk @ {:?}", pos);
+                            self.network_tx.send(ToNetwork::NewChunk(*id, pos, chunk.clone())).unwrap();
                             ()
                         });
                     }
