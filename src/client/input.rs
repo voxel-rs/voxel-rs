@@ -30,6 +30,7 @@ use ::render::frames::FrameCounter;
 use ::render::camera::Camera;
 use ::config::{Config, load_config};
 use ::texture::TextureRegistry;
+use ::util::Ticker;
 
 type PipeDataType = pipe::Data<gfx_device_gl::Resources>;
 type PsoType = gfx::PipelineState<gfx_device_gl::Resources, pipe::Meta>;
@@ -75,6 +76,7 @@ struct InputImpl {
     rendering_state: RenderingState,
     debug_info: DebugInfo,
     #[allow(dead_code)] game_registries: GameRegistries,
+    ticker: Ticker,
 }
 
 struct ClientGameState {
@@ -250,12 +252,6 @@ impl InputImpl {
         // Send render distance
         network_tx.send(ToNetwork::SetRenderDistance(config.render_distance as u64)).unwrap();
 
-        // Send updated position to network
-        network_tx.send(ToNetwork::SetPos({
-            let p = cam.get_pos();
-            (p.0 as f64, p.1 as f64, p.2 as f64)
-        })).unwrap();
-
         // Create object
         Self {
             running: true,
@@ -287,6 +283,7 @@ impl InputImpl {
                 block_registry: br,
                 texture_registry: texture_registry,
             },
+            ticker: Ticker::from_tick_rate(30),
         }
     }
 
@@ -382,6 +379,14 @@ impl InputImpl {
         let elapsed = self.game_state.timer.elapsed();
         self.game_state.camera.tick(elapsed.subsec_nanos() as f32/1_000_000_000.0 +  elapsed.as_secs() as f32, &self.game_state.keyboard_state);
         self.game_state.timer = Instant::now();
+        
+        // Send updated position to network
+        /*if self.ticker.try_tick() {
+            self.network_tx.send(ToNetwork::SetPos({
+                let p = self.game_state.camera.get_pos();
+                (p.0 as f64, p.1 as f64, p.2 as f64)
+            })).unwrap();
+        }*/
     }
 
     pub fn center_cursor(&mut self) {
