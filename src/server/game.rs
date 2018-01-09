@@ -49,6 +49,7 @@ impl GameImpl {
 
     fn process_message(&mut self, message: ToGame) {
         use ::core::messages::server::ToGamePlayer as Ev;
+        println!("[Server] Game Event: {:?}", message);
         match message {
             ToGame::PlayerEvent(id, ev) => match ev {
                 Ev::Connect => {
@@ -68,8 +69,16 @@ impl GameImpl {
     }
 
     pub fn send_chunks(&mut self) {
+        let GameImpl {
+            ref mut chunks,
+            ref mut players,
+            ref mut generator,
+            ref mut network_tx,
+            ..
+        } = *self;
+
         // Send chunks to the players, eventually generating them
-        for (id, player) in self.players.iter_mut() {
+        for (id, player) in players.iter_mut() {
             let d = player.render_distance as i64;
             let p = player.pos;
             let (px, py, pz) = (p.0 as i64 / CHUNK_SIZE as i64, p.1 as i64 / CHUNK_SIZE as i64, p.2 as i64 / CHUNK_SIZE as i64);
@@ -77,10 +86,9 @@ impl GameImpl {
                 for y in -d..(d+1) {
                     for z in -d..(d+1) {
                         let pos = ChunkPos(px + x, py + y, pz + z);
-                        player.chunks.entry(pos.clone()).or_insert({
-                            let chunk = self.chunks.entry(pos.clone()).or_insert(self.generator.generate(&pos));
-                            println!("[Server] Generated chunk @ {:?}", pos);
-                            self.network_tx.send(ToNetwork::NewChunk(*id, pos, chunk.clone())).unwrap();
+                        player.chunks.entry(pos.clone()).or_insert_with(|| {
+                            let chunk = chunks.entry(pos.clone()).or_insert(generator.generate(&pos));
+                            network_tx.send(ToNetwork::NewChunk(*id, pos, chunk.clone())).unwrap();
                             ()
                         });
                     }
@@ -93,11 +101,6 @@ impl GameImpl {
         }
 
         // Remove chunks that are far from all players
-        let GameImpl {
-            ref mut chunks,
-            ref mut players,
-            ..
-        } = *self;
         chunks.retain(|pos, _| {
             for (_, player) in players.iter() {
                 let p = player.pos;

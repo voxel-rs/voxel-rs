@@ -50,10 +50,12 @@ pub mod messages {
             NewChunk(ConnectionID, ChunkPos, Box<ChunkArray>),
         }
 
+        #[derive(Debug)]
         pub enum ToGame {
             PlayerEvent(ConnectionID, ToGamePlayer),
         }
 
+        #[derive(Debug)]
         pub enum ToGamePlayer {
             Connect,
             SetPos(PlayerPos),

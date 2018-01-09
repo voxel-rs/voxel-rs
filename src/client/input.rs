@@ -381,12 +381,12 @@ impl InputImpl {
         self.game_state.timer = Instant::now();
         
         // Send updated position to network
-        /*if self.ticker.try_tick() {
+        if self.ticker.try_tick() {
             self.network_tx.send(ToNetwork::SetPos({
                 let p = self.game_state.camera.get_pos();
                 (p.0 as f64, p.1 as f64, p.2 as f64)
             })).unwrap();
-        }*/
+        }
     }
 
     pub fn center_cursor(&mut self) {
