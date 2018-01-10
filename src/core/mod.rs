@@ -1,9 +1,11 @@
 pub mod messages {
     pub mod client {
         use ::block::{ChunkInfo, ChunkFragment, ChunkPos, FragmentPos};
+        use ::player::PlayerPos;
 
         pub enum ToNetwork {
-            NewChunk(ChunkPos),
+            SetPos(PlayerPos),
+            SetRenderDistance(u64),
         }
 
         pub enum ToInput {
@@ -20,6 +22,7 @@ pub mod messages {
 
     pub mod network {
         use ::block::{ChunkInfo, ChunkFragment, ChunkPos, FragmentPos};
+        use ::player::PlayerPos;
 
         #[derive(Serialize, Deserialize)]
         pub enum ToClient {
@@ -29,7 +32,35 @@ pub mod messages {
 
         #[derive(Serialize, Deserialize)]
         pub enum ToServer {
-            NewChunk(ChunkPos),
+            SetPosition(PlayerPos),
+            SetRenderDistance(u64),
+        }
+    }
+
+    pub mod server {
+        extern crate cobalt;
+
+        use ::block::{ChunkArray, ChunkPos};
+        use ::player::PlayerPos;
+
+        use self::cobalt::ConnectionID;
+        
+
+        pub enum ToNetwork {
+            NewChunk(ConnectionID, ChunkPos, Box<ChunkArray>),
+        }
+
+        #[derive(Debug)]
+        pub enum ToGame {
+            PlayerEvent(ConnectionID, ToGamePlayer),
+        }
+
+        #[derive(Debug)]
+        pub enum ToGamePlayer {
+            Connect,
+            SetPos(PlayerPos),
+            SetRenderDistance(u64),
+            Disconnect,
         }
     }
 }

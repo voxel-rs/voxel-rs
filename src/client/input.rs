@@ -30,6 +30,7 @@ use ::render::frames::FrameCounter;
 use ::render::camera::Camera;
 use ::config::{Config, load_config};
 use ::texture::TextureRegistry;
+use ::util::Ticker;
 
 type PipeDataType = pipe::Data<gfx_device_gl::Resources>;
 type PsoType = gfx::PipelineState<gfx_device_gl::Resources, pipe::Meta>;
@@ -75,6 +76,7 @@ struct InputImpl {
     rendering_state: RenderingState,
     debug_info: DebugInfo,
     #[allow(dead_code)] game_registries: GameRegistries,
+    ticker: Ticker,
 }
 
 struct ClientGameState {
@@ -164,7 +166,7 @@ impl InputImpl {
             let (network_t, network_r) = channel();
             // Client-server
             let cfg = Config {
-                send_rate: 10000, // TODO: This is not suitable for normal connections.
+                send_rate: 2500, // TODO: This is not suitable for normal connections.
                 packet_max_size: 576, // 576 is the IPv4 "minimum reassembly buffer size"
                 connection_init_threshold: ::std::time::Duration::new(1, 0),
                 connection_drop_threshold: ::std::time::Duration::new(4, 0),
@@ -196,12 +198,14 @@ impl InputImpl {
             }
 
             {
+                let (game_tx, game_rx) = channel();
+                let (network_tx, network_rx) = channel();
                 thread::spawn(move || {
                     match server.listen("0.0.0.0:1106") {
                         Ok(()) =>  {
                             server.socket().unwrap().as_raw_udp_socket().set_recv_buffer_size(1024*1024*8).unwrap();
                             server.socket().unwrap().as_raw_udp_socket().set_send_buffer_size(1024*1024*8).unwrap();
-                            ::server::network::start(server);
+                            ::server::network::start(network_rx, game_tx, server);
                             //server.shutdown();
                         },
                         Err(e) => {
@@ -210,11 +214,15 @@ impl InputImpl {
                     }
                     //server.shutdown();
                 });
+
+                thread::spawn(move || {
+                    ::server::game::start(game_rx, network_tx);
+                });
             }
 
             rx = input_r;
             meshing_tx = meshing_t;
-            network_tx= network_t;
+            network_tx = network_t;
         }
 
         // TODO: Completely useless, this is just used to fill the PSO
@@ -240,6 +248,9 @@ impl InputImpl {
         let cam = Camera::new(w, h, &config);
 
         window.set_cursor(MouseCursor::Crosshair);
+        
+        // Send render distance
+        network_tx.send(ToNetwork::SetRenderDistance(config.render_distance as u64)).unwrap();
 
         // Create object
         Self {
@@ -272,6 +283,7 @@ impl InputImpl {
                 block_registry: br,
                 texture_registry: texture_registry,
             },
+            ticker: Ticker::from_tick_rate(30),
         }
     }
 
@@ -367,6 +379,14 @@ impl InputImpl {
         let elapsed = self.game_state.timer.elapsed();
         self.game_state.camera.tick(elapsed.subsec_nanos() as f32/1_000_000_000.0 +  elapsed.as_secs() as f32, &self.game_state.keyboard_state);
         self.game_state.timer = Instant::now();
+        
+        // Send updated position to network
+        if self.ticker.try_tick() {
+            self.network_tx.send(ToNetwork::SetPos({
+                let p = self.game_state.camera.get_pos();
+                (p.0 as f64, p.1 as f64, p.2 as f64)
+            })).unwrap();
+        }
     }
 
     pub fn center_cursor(&mut self) {
@@ -382,7 +402,6 @@ impl InputImpl {
 
     pub fn fetch_close_chunks(&mut self) {
         let meshing_tx = self.meshing_tx.clone();
-        let network_tx = self.network_tx.clone();
 
         let player_chunk = self.game_state.camera.get_pos();
         let player_chunk = ChunkPos(
@@ -400,7 +419,6 @@ impl InputImpl {
                     self.rendering_state.chunks.entry(pos.clone()).or_insert_with(|| {
                         println!("Input: asked for buffer @ {:?}", pos);
                         meshing_tx.send(ToMeshing::AllowChunk(pos.clone())).unwrap();
-                        network_tx.send(ToNetwork::NewChunk(pos)).unwrap();
                         None
                     });
                 }

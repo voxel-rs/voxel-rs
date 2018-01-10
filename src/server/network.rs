@@ -1,25 +1,23 @@
 extern crate bincode;
 extern crate cobalt;
-extern crate noise;
-extern crate rand;
 
-use ::block::BlockId;
 use ::CHUNK_SIZE;
 use ::core::messages::network::{ToClient, ToServer};
+use ::core::messages::server::{ToGame, ToGamePlayer, ToNetwork};
 use ::util::Ticker;
+
 use ::std::collections::{HashMap, VecDeque};
+use ::std::sync::mpsc::{Sender, Receiver};
 use ::std::time::{Duration, Instant};
 
 use self::cobalt::{ConnectionID, MessageKind, PacketModifier, Server, ServerEvent, Socket, RateLimiter};
-use self::noise::{NoiseModule, Perlin, Seedable};
-use self::rand::{SeedableRng, Rng};
 
-pub fn start<S, R, M>(server: Server<S, R, M>) where
+pub fn start<S, R, M>(rx: Receiver<ToNetwork>, game_tx: Sender<ToGame>, server: Server<S, R, M>) where
     S: Socket,
     R: RateLimiter,
     M: PacketModifier {
 
-    let mut implementation = ServerImpl::from_server(server);
+    let mut implementation = ServerImpl::from_parts(rx, game_tx, server);
     
     loop {
         implementation.receive_messages();
@@ -35,14 +33,11 @@ struct ServerImpl<S, R, M> where
     R: RateLimiter,
     M: PacketModifier {
 
+    rx: Receiver<ToNetwork>,
+    game_tx: Sender<ToGame>,
     server: Server<S, R, M>,
-    queues: HashMap<ConnectionID, (Instant, VecDeque<ToServer>)>,
+    queues: HashMap<ConnectionID, (Instant, VecDeque<ToNetwork>)>,
     ticker: Ticker,
-    chunk_generator: ChunkGenerator,
-}
-
-struct ChunkGenerator {
-    perlin: Perlin,
 }
 
 impl<S, R, M> ServerImpl<S, R, M> where
@@ -50,27 +45,42 @@ impl<S, R, M> ServerImpl<S, R, M> where
     R: RateLimiter,
     M: PacketModifier {
     
-    pub fn from_server(server: Server<S, R, M>) -> Self {
+    pub fn from_parts(rx: Receiver<ToNetwork>, game_tx: Sender<ToGame>, server: Server<S, R, M>) -> Self {
         let tick_rate = server.config().send_rate as u32;
         ServerImpl {
+            rx,
+            game_tx,
             server,
             queues: HashMap::new(),
             ticker: Ticker::from_tick_rate(tick_rate),
-            chunk_generator: ChunkGenerator::new(),
         }
     }
 
     pub fn receive_messages(&mut self) {
+        // Network messages
         while let Ok(message) = self.server.accept_receive() {
-            println!("[Server] Network: received event {:?}", message);
-            match message {
-                ServerEvent::Message(id, data) => {
-                    let message = bincode::deserialize(data.as_ref()).unwrap();
-                    self.queues.entry(id).or_insert((Instant::now(), VecDeque::new())).1.push_back(message);
-                },
-                // TODO: Use other events
-                _ => {},
+            let message = match message {
+                ServerEvent::Connection(id) => Some((id, ToGamePlayer::Connect)),
+                ServerEvent::ConnectionClosed(id, _) |
+                ServerEvent::ConnectionLost(id, _) => Some((id, ToGamePlayer::Disconnect)),
+                ServerEvent::Message(id, data) => Some((id, match bincode::deserialize(data.as_ref()).unwrap() {
+                    ToServer::SetPosition(pos) => ToGamePlayer::SetPos(pos),
+                    ToServer::SetRenderDistance(render_distance) => ToGamePlayer::SetRenderDistance(render_distance),
+                })),
+                _ => None,
+            };
+            if let Some(message) = message {
+                let message = ToGame::PlayerEvent(message.0, message.1);
+                self.game_tx.send(message).unwrap();
             }
+        }
+
+        // Internal messages
+        while let Ok(message) = self.rx.try_recv() {
+            let id = match &message {
+                &ToNetwork::NewChunk(id, _, _) => id,
+            };
+            self.queues.entry(id).or_insert((Instant::now(), VecDeque::new())).1.push_back(message);
         }
     }
 
@@ -82,10 +92,9 @@ impl<S, R, M> ServerImpl<S, R, M> where
                     if !connection.congested() { // Not congested ?
                         // Reply to 1 message
                         match queue.pop_front().unwrap() {
-                            ToServer::NewChunk(pos) => {
+                            ToNetwork::NewChunk(_, pos, chunk) => {
                                 println!("[Server] Network: processing chunk @ {:?}", pos);
 
-                                let chunk = self.chunk_generator.generate(&pos);
                                 let mut info = [0; CHUNK_SIZE * CHUNK_SIZE / 32];
                                 for (cx, chunkyz) in chunk.iter().enumerate() {
                                     'yiter: for (cy, chunkz) in chunkyz.iter().enumerate() {
@@ -107,6 +116,11 @@ impl<S, R, M> ServerImpl<S, R, M> where
                     }
                 }
             }
+            /*if should_tick {
+                for _ in 0..(5 * CHUNK_SIZE * CHUNK_SIZE) {
+                    self.server.send(false).unwrap();
+                }
+            }*/
         }
     }
 
@@ -116,88 +130,5 @@ impl<S, R, M> ServerImpl<S, R, M> where
         if self.ticker.try_tick() {
             self.server.send(false).unwrap();
         }
-    }
-}
-
-impl ChunkGenerator {
-    pub fn new() -> Self {
-        let perlin = Perlin::new();
-        perlin.set_seed(42);
-        ChunkGenerator {
-            perlin,
-        }
-    }
-
-    pub fn generate(&mut self, pos: &::block::ChunkPos) -> Box<::block::ChunkArray> {
-        println!("[Server] Network: processing chunk @ {:?}", pos);
-
-        let mut chunk = [[[BlockId::from(0); CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE];
-        let mut rng = rand::StdRng::from_seed(&[((pos.0*4242424242 + pos.2)%1_000_000_007).abs() as usize]);
-        for i in 0..CHUNK_SIZE {
-            for j in 0..CHUNK_SIZE {
-                let height = (150.0*self.perlin.get([
-                    0.005*(0.0021 + (CHUNK_SIZE as i64 * pos.0 + i as i64) as f64/3.0),
-                    0.5,
-                    0.005*(0.0021 + (CHUNK_SIZE as i64 * pos.2 + j as i64) as f64/3.0)])) as i64;
-                for k in 0..CHUNK_SIZE {
-                    if (pos.1*CHUNK_SIZE as i64 + k as i64) < height {
-                        chunk[i][k][j] = BlockId::from(1);
-                    }
-                    else if (pos.1*CHUNK_SIZE as i64 + k as i64) == height {
-                        chunk[i][k][j] = BlockId::from(2);
-                    }
-                }
-            }
-        }
-        let theta: f64 = rng.gen_range(0.0, 2.0*3.14);
-        let r: usize = rng.gen_range(0, CHUNK_SIZE/2 - 5);
-        let (x, y) = ((r as f64*theta.cos()) as i64 + CHUNK_SIZE as i64/2, (r as f64*theta.sin()) as i64 + CHUNK_SIZE as i64/2);
-        let (x, y) = (x as usize, y as usize);
-        // Spawn tree trunk
-        for i in 0..7 {
-            let height = (150.0*self.perlin.get([
-                    0.005*(0.0021 + (CHUNK_SIZE as i64 * pos.0 + x as i64) as f64/3.0),
-                    0.5,
-                    0.005*(0.0021 + (CHUNK_SIZE as i64 * pos.2 + y as i64) as f64/3.0)])) as i64;
-            if pos.1*CHUNK_SIZE as i64 <= height + i && height+i < (pos.1+1)*CHUNK_SIZE as i64 {
-                chunk[x][(height - pos.1*CHUNK_SIZE as i64 + i) as usize][y] = BlockId::from(3);
-            }
-            for ii in (-3i64)..4 {
-                for j in (-3i64)..4 {
-                    if ii.abs() != 3 && j.abs() != 3 {
-
-                        let mut k = 3;
-
-                        if ii.abs() + j.abs() <= 2 {
-                            k = 5
-                        }
-                        if ii.abs() + j.abs() <= 1 {
-                            k = 6
-                        }
-
-                        for s in 0..k {
-                            let xx = x as i64 + ii;
-                            let yy = y as i64 + j;
-                            let zz = height - pos.1*CHUNK_SIZE as i64 + s + 3;
-                            if xx >= 0 && yy >= 0 && zz >= 0 && zz < CHUNK_SIZE as i64 && xx < CHUNK_SIZE as i64 && yy < CHUNK_SIZE as i64 {
-                                let xx = xx as usize;
-                                let yy = yy as usize;
-                                let zz = zz as usize;
-                                if chunk[xx][zz][yy] == BlockId::from(0) {
-                                    chunk[xx][zz][yy] = BlockId::from(4);
-                                }
-                            } 
-
-                        }
-
-                }
-            }
-        }
-
-        }
-
-
-
-        Box::new(chunk)
     }
 }
