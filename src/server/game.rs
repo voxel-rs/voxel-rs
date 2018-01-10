@@ -18,7 +18,7 @@ pub fn start(rx: Receiver<ToGame>, network_tx: Sender<ToNetwork>) {
     let mut implementation = GameImpl::from_parts(rx, network_tx);
     loop {
         implementation.process_messages();
-        
+
         implementation.send_chunks();
     }
 }
@@ -140,10 +140,38 @@ impl ChunkGenerator {
                     0.005*(0.0021 + (CHUNK_SIZE as i64 * pos.2 + j as i64) as f64/3.0)])) as i64;
                 for k in 0..CHUNK_SIZE {
                     if (pos.1*CHUNK_SIZE as i64 + k as i64) < height {
+                        // Dirt
                         chunk[i][k][j] = BlockId::from(1);
+                        if (pos.1*CHUNK_SIZE as i64 + k as i64) < height - 5{
+                            // Stone
+                            chunk[i][k][j] = BlockId::from(5);
+                        }
                     }
                     else if (pos.1*CHUNK_SIZE as i64 + k as i64) == height {
+                        // Grass
                         chunk[i][k][j] = BlockId::from(2);
+                    }
+                }
+
+                // Caves
+                for s in 0..9{
+                    let cave_noise = (100.0*(1.0 + self.perlin.get([
+                        0.005*(0.0021 + (CHUNK_SIZE as i64 * pos.0 + i as i64) as f64),
+                        50.0*s as f64,
+                        0.005*(0.0021 + (CHUNK_SIZE as i64 * pos.2 + j as i64) as f64)]))) as i64;
+
+                    let cave_deep = -32 + (96.0*(1.0+self.perlin.get([
+                        0.005*(0.0021 + (CHUNK_SIZE as i64 * pos.0 + i as i64) as f64 ),
+                        100.0*s as f64,
+                        0.005*(0.0021 + (CHUNK_SIZE as i64 * pos.2 + j as i64) as f64 )]))) as i64;
+
+                    for k in 0..CHUNK_SIZE {
+                        if cave_noise > 45 && cave_noise < 50 {
+                            let cd = pos.1*CHUNK_SIZE as i64 + k as i64;
+                            if cd > height - cave_deep - 5 && cd <= height - cave_deep {
+                                chunk[i][k][j] = BlockId::from(0); // TO DO : REPLACE WITH FILL SPHERE
+                            }
+                        }
                     }
                 }
             }
@@ -164,7 +192,7 @@ impl ChunkGenerator {
             for ii in (-3i64)..4 {
                 for j in (-3i64)..4 {
                     if ii.abs() != 3 && j.abs() != 3 {
-                        
+
                         let mut k = 3;
 
                         if ii.abs() + j.abs() <= 2 {
@@ -185,7 +213,7 @@ impl ChunkGenerator {
                                 if chunk[xx][zz][yy] == BlockId::from(0) {
                                     chunk[xx][zz][yy] = BlockId::from(4);
                                 }
-                            } 
+                            }
                         }
                     }
                 }
