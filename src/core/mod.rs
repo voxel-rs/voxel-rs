@@ -21,12 +21,12 @@ pub mod messages {
     }
 
     pub mod network {
-        use ::block::{ChunkInfo, ChunkFragment, ChunkPos, FragmentPos};
+        use ::block::{ChunkInfo, ChunkPos, FragmentPos};
         use ::player::PlayerPos;
 
         #[derive(Serialize, Deserialize)]
         pub enum ToClient {
-            NewChunkFragment(ChunkPos, FragmentPos, Box<ChunkFragment>),
+            NewChunkFragment(ChunkPos, FragmentPos, Vec<u8>),
             NewChunkInfo(ChunkPos, ChunkInfo),
         }
 
@@ -44,7 +44,7 @@ pub mod messages {
         use ::player::PlayerPos;
 
         use self::cobalt::ConnectionID;
-        
+
 
         pub enum ToNetwork {
             NewChunk(ConnectionID, ChunkPos, Box<ChunkArray>),

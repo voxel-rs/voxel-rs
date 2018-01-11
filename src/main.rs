@@ -36,6 +36,7 @@ mod client;
 mod config;
 mod core;
 mod input;
+mod network;
 mod player;
 mod render;
 mod server;

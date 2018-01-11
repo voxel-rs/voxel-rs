@@ -5,6 +5,7 @@ use std::sync::mpsc::{Sender, Receiver, TryRecvError};
 use std::collections::VecDeque;
 use ::core::messages::client::{ToMeshing, ToNetwork};
 use ::core::messages::network::{ToClient, ToServer};
+use ::network::deserialize_fragment;
 use ::util::Ticker;
 
 use self::cobalt::{Client, ClientEvent, MessageKind, PacketModifier, Socket, RateLimiter};
@@ -45,7 +46,7 @@ impl<S, R, M> ClientImpl<S, R, M> where
     S: Socket,
     R: RateLimiter,
     M: PacketModifier {
-    
+
     pub fn from_parts(client_rx: Receiver<ToNetwork>, meshing_tx: Sender<ToMeshing>, client: Client<S, R, M>) -> Self {
         let tick_rate = client.config().send_rate as u32;
         ClientImpl {
@@ -91,9 +92,9 @@ impl<S, R, M> ClientImpl<S, R, M> where
                     //println!("Network: received event {:?}", message);
                     match message {
                         ClientEvent::Message(bytes) => match bincode::deserialize(bytes.as_ref()).unwrap() {
-                            ToClient::NewChunkFragment(pos, fpos, chunk) => {
+                            ToClient::NewChunkFragment(pos, fpos, frag) => {
                                 //println!("Network: received chunk fragment @ {:?}, {:?}", pos, fpos);
-                                self.meshing_tx.send(ToMeshing::NewChunkFragment(pos, fpos, chunk)).unwrap();
+                                self.meshing_tx.send(ToMeshing::NewChunkFragment(pos, fpos, deserialize_fragment(&frag[..]))).unwrap();
                                 self.received_messages += 1;
                             },
                             ToClient::NewChunkInfo(pos, info) => {
@@ -127,7 +128,7 @@ impl<S, R, M> ClientImpl<S, R, M> where
             }
         }
     }
-    
+
     /// Ticks the client if it is time to
     // TODO: Merge this with ServerImpl's equivalent
     pub fn try_tick(&mut self) {

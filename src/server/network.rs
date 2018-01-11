@@ -4,6 +4,7 @@ extern crate cobalt;
 use ::CHUNK_SIZE;
 use ::core::messages::network::{ToClient, ToServer};
 use ::core::messages::server::{ToGame, ToGamePlayer, ToNetwork};
+use ::network::serialize_fragment;
 use ::util::Ticker;
 
 use ::std::collections::{HashMap, VecDeque};
@@ -18,7 +19,7 @@ pub fn start<S, R, M>(rx: Receiver<ToNetwork>, game_tx: Sender<ToGame>, server: 
     M: PacketModifier {
 
     let mut implementation = ServerImpl::from_parts(rx, game_tx, server);
-    
+
     loop {
         implementation.receive_messages();
 
@@ -44,7 +45,7 @@ impl<S, R, M> ServerImpl<S, R, M> where
     S: Socket,
     R: RateLimiter,
     M: PacketModifier {
-    
+
     pub fn from_parts(rx: Receiver<ToNetwork>, game_tx: Sender<ToGame>, server: Server<S, R, M>) -> Self {
         let tick_rate = server.config().send_rate as u32;
         ServerImpl {
@@ -86,7 +87,7 @@ impl<S, R, M> ServerImpl<S, R, M> where
 
     pub fn process_messages(&mut self) {
         for (id, &mut(ref mut last_message, ref mut queue)) in self.queues.iter_mut() {
-            if Instant::now() - *last_message > Duration::new(0, 100_000_000) && queue.len() > 0 { // Any queued messages ?
+            if Instant::now() - *last_message > Duration::new(0, 5_000_000) && queue.len() > 0 { // Any queued messages ?
                 let connection = self.server.connection(&id);
                 if let Ok(connection) = connection { // Open connection ?
                     if !connection.congested() { // Not congested ?
@@ -100,7 +101,7 @@ impl<S, R, M> ServerImpl<S, R, M> where
                                     'yiter: for (cy, chunkz) in chunkyz.iter().enumerate() {
                                         for block in chunkz.iter() {
                                             if block.0 != 0 { // Only send the message if the ChunkFragment is not empty.
-                                                connection.send(MessageKind::Reliable, bincode::serialize(&ToClient::NewChunkFragment(pos.clone(), ::block::FragmentPos(cx, cy), Box::new(chunkz.clone())), bincode::Infinite).unwrap());
+                                                connection.send(MessageKind::Reliable, bincode::serialize(&ToClient::NewChunkFragment(pos.clone(), ::block::FragmentPos(cx, cy), serialize_fragment(&chunkz)), bincode::Infinite).unwrap());
                                                 continue 'yiter;
                                             }
                                         }
