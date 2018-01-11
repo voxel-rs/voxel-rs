@@ -100,4 +100,12 @@ impl Camera {
     pub fn get_pos(&self) -> (f32, f32, f32) {
         (self.position[0], self.position[1], self.position[2])
     }
+
+    pub fn get_cam_dir(&self) -> [f32; 3] {
+        (Vector3 {
+            x: -self.pitch.cos() * self.yaw.sin(),
+            y:  self.pitch.sin(),
+            z: -self.pitch.cos() * self.yaw.cos(),
+        }).into()
+    }
 }

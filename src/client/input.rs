@@ -21,7 +21,7 @@ use gfx::texture::{SamplerInfo, FilterMethod, WrapMode};
 use self::glutin::{GlContext, MouseCursor};
 use self::net2::UdpSocketExt;
 
-use ::{CHUNK_SIZE, ColorFormat, DepthFormat, pipe, Vertex, Transform};
+use ::{CHUNK_SIZE, ColorFormat, DepthFormat, pipe, PlayerData, Vertex, Transform};
 use ::core::messages::client::{ToInput, ToMeshing, ToNetwork};
 use ::texture::{load_textures};
 use ::block::{BlockRegistry, Chunk, ChunkPos, create_block_air, create_block_cube};
@@ -53,7 +53,7 @@ pub fn start() {
 
         // Ticking
         implementation.move_camera();
-        
+
         // Center cursor
         // TODO: Draw custom crossbar instead of using the system cursor.
         implementation.center_cursor();
@@ -94,7 +94,7 @@ struct RenderingState {
     pub pso: PsoType,
     pub data: PipeDataType,
     pub encoder: EncoderType,
-    pub chunks: HashMap<ChunkPos, Option<(gfx::handle::Buffer<gfx_device_gl::Resources, Vertex>, gfx::Slice<gfx_device_gl::Resources>)>>, 
+    pub chunks: HashMap<ChunkPos, Option<(gfx::handle::Buffer<gfx_device_gl::Resources, Vertex>, gfx::Slice<gfx_device_gl::Resources>)>>,
 }
 
 struct GameRegistries {
@@ -120,9 +120,9 @@ impl InputImpl {
         let context = glutin::ContextBuilder::new()
             .with_vsync(false)
             .with_gl(glutin::GlRequest::Specific(glutin::Api::OpenGl, (3, 3)));
-        let (window, device, mut factory, main_color, main_depth) = 
+        let (window, device, mut factory, main_color, main_depth) =
             gfx_window_glutin::init::<ColorFormat, DepthFormat>(builder, context, &events_loop);
-        
+
         let pso = factory.create_pipeline_simple(
             include_bytes!("../shader/vertex_150.glslv"),
             include_bytes!("../shader/vertex_150.glslf"),
@@ -232,9 +232,11 @@ impl InputImpl {
         // Render data
         let (vertex_buffer, _) = factory.create_vertex_buffer_with_slice(&cube, ());
         let transform_buffer = factory.create_constant_buffer(1);
+        let player_data_buffer = factory.create_constant_buffer(1);
         let data = pipe::Data {
             vbuf: vertex_buffer,
             transform: transform_buffer,
+            player_data: player_data_buffer,
             //image: (load_texture(&mut factory, "assets/grass_side.png"), sampler),
             //image: (load_textures(&mut factory).0, sampler),
             image: (atlas, sampler),
@@ -248,7 +250,7 @@ impl InputImpl {
         let cam = Camera::new(w, h, &config);
 
         window.set_cursor(MouseCursor::Crosshair);
-        
+
         // Send render distance
         network_tx.send(ToNetwork::SetRenderDistance(config.render_distance as u64)).unwrap();
 
@@ -379,7 +381,7 @@ impl InputImpl {
         let elapsed = self.game_state.timer.elapsed();
         self.game_state.camera.tick(elapsed.subsec_nanos() as f32/1_000_000_000.0 +  elapsed.as_secs() as f32, &self.game_state.keyboard_state);
         self.game_state.timer = Instant::now();
-        
+
         // Send updated position to network
         if self.ticker.try_tick() {
             self.network_tx.send(ToNetwork::SetPos({
@@ -424,7 +426,7 @@ impl InputImpl {
                 }
             }
         }
-        
+
         // Trash far chunks
         self.rendering_state.chunks.retain(|pos, _| {
             if
@@ -442,14 +444,21 @@ impl InputImpl {
     }
 
     pub fn render(&mut self) {
+        let state = &mut self.rendering_state;
+
         // The transform buffer
         let mut transform = Transform {
             view_proj: self.game_state.camera.get_view_projection().into(),
             model: [[0.0; 4]; 4],
         };
 
-        let state = &mut self.rendering_state;
-        
+        // The player data buffer
+        let player_data = PlayerData {
+            direction: self.game_state.camera.get_cam_dir(),
+        };
+
+        state.encoder.update_buffer(&state.data.player_data, &[player_data], 0).unwrap();
+
         state.encoder.clear(&state.data.out_color, CLEAR_COLOR);
         state.encoder.clear_depth(&state.data.out_depth, 1.0);
 

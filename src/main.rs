@@ -14,6 +14,7 @@ gfx_defines! {
     vertex Vertex {
         pos: [f32; 4] = "a_Pos",
         uv: [f32; 2] = "a_Uv",
+        normal: [f32; 3] = "a_Normal",
     }
 
     constant Transform {
@@ -21,9 +22,14 @@ gfx_defines! {
         model: [[f32; 4]; 4] = "u_Model",
     }
 
+    constant PlayerData {
+        direction: [f32; 3] = "u_Direction",
+    }
+
     pipeline pipe {
         vbuf: gfx::VertexBuffer<Vertex> = (),
         transform: gfx::ConstantBuffer<Transform> = "Transform",
+        player_data: gfx::ConstantBuffer<PlayerData> = "PlayerData",
         image: gfx::TextureSampler<[f32; 4]> = "t_Image",
         out_color: gfx::RenderTarget<ColorFormat> = "Target0",
         out_depth: gfx::DepthTarget<DepthFormat> =

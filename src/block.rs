@@ -105,6 +105,7 @@ impl Block for BlockCube {
                     vertices.push(Vertex {
                         pos: [coords[0] + dx as f32, coords[1] + dy as f32, coords[2] + dz as f32, 1.],
                         uv: [uv_coords[0], uv_coords[1]],
+                        normal: NORMALS[face as usize].clone(),
                     });
                 }
             }
@@ -139,7 +140,7 @@ pub fn create_block_air() -> BlockAir {
 
 impl Block for BlockAir {
     fn render(&self, _: &mut Vec<Vertex>, _: u8, _: (u64, u64, u64)) {
-        
+
     }
 
     fn is_opaque(&self) -> bool {
@@ -147,15 +148,15 @@ impl Block for BlockAir {
     }
 }
 
-/// ```ignore
-/// 0     1
-/// +-----+
-/// |   / |
-/// |  /  |
-/// | /   |
-/// +-----+
-/// 3     2
-/// ```
+// ```
+// 0     1
+// +-----+
+// |   / |
+// |  /  |
+// | /   |
+// +-----+
+// 3     2
+// ```
 const FACES: [[usize; 4]; 6] = [
     [5, 4, 0, 1],
     [7, 6, 2, 3],
@@ -185,4 +186,13 @@ const UVS: [[f32; 2]; 4] = [
 
 const FACE_ORDER: [usize; 6] = [
     0, 3, 1, 1, 3, 2,
+];
+
+const NORMALS: [[f32; 3]; 6] = [
+    [ 0.,  0., -1.],
+    [ 0.,  0.,  1.],
+    [ 1.,  0.,  0.],
+    [-1.,  0.,  0.],
+    [ 0.,  1.,  0.],
+    [ 0., -1.,  0.],
 ];
