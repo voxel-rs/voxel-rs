@@ -15,6 +15,8 @@ out vec4 Target0;
     return f1 > f2 ? f1 : f2;
 }*/
 
+const vec3 DIRECTION = normalize(vec3(0, 1, 0.5));
+
 void main() {
-    Target0 = texture(t_Image, v_Uv) * (0.8 + 0.2*max(-dot(v_Normal, u_Direction), 0));
+    Target0 = texture(t_Image, v_Uv) * (0.6 + 0.4*abs(dot(v_Normal, DIRECTION)));
 }
