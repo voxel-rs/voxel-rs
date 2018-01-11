@@ -166,7 +166,7 @@ impl InputImpl {
             let (network_t, network_r) = channel();
             // Client-server
             let cfg = Config {
-                send_rate: 2500, // TODO: This is not suitable for normal connections.
+                send_rate: config.tick_rate,
                 packet_max_size: 576, // 576 is the IPv4 "minimum reassembly buffer size"
                 connection_init_threshold: ::std::time::Duration::new(1, 0),
                 connection_drop_threshold: ::std::time::Duration::new(4, 0),

@@ -22,6 +22,8 @@ pub struct Config {
     pub ctrl_speedup: f32,
     #[serde(default = "default_render_distance")]
     pub render_distance: i64,
+    #[serde(default = "default_tick_rate")]
+    pub tick_rate: u64,
 }
 
 fn default_player_x() -> f32 {
@@ -50,6 +52,10 @@ fn default_ctrl_speedup() -> f32 {
 
 fn default_render_distance() -> i64 {
     5
+}
+
+fn default_tick_rate() -> u64 {
+    2500
 }
 
 pub fn load_config(path: &Path) -> Config {
