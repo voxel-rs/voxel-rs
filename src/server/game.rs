@@ -138,13 +138,25 @@ impl ChunkGenerator {
                     0.005*(0.0021 + (CHUNK_SIZE as i64 * pos.0 + i as i64) as f64/3.0),
                     0.5,
                     0.005*(0.0021 + (CHUNK_SIZE as i64 * pos.2 + j as i64) as f64/3.0)])) as i64;
+
+
                 for k in 0..CHUNK_SIZE {
+
+                    let coal_noise = (100.0*(1.0+self.perlin.get([
+                        0.1*(CHUNK_SIZE as i64 * pos.0 + i as i64) as f64,
+                        0.1*(CHUNK_SIZE as i64 * pos.1 + k as i64) as f64,
+                        0.1*(CHUNK_SIZE as i64 * pos.2 + j as i64) as f64]))) as i64;
+
                     if (pos.1*CHUNK_SIZE as i64 + k as i64) < height {
                         // Dirt
                         chunk[i][k][j] = BlockId::from(1);
                         if (pos.1*CHUNK_SIZE as i64 + k as i64) < height - 5{
                             // Stone
-                            chunk[i][k][j] = BlockId::from(5);
+                            if coal_noise > 10 && coal_noise < 15{
+                                chunk[i][k][j] = BlockId::from(6);
+                            }else{
+                                chunk[i][k][j] = BlockId::from(5);
+                            }
                         }
                     }
                     else if (pos.1*CHUNK_SIZE as i64 + k as i64) == height {
@@ -152,6 +164,9 @@ impl ChunkGenerator {
                         chunk[i][k][j] = BlockId::from(2);
                     }
                 }
+
+
+
 
                 // Caves
                 for s in 0..9{
