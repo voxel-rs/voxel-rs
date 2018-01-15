@@ -17,8 +17,6 @@ pub fn start<S, R, M>(client_rx: Receiver<ToNetwork>, meshing_tx: Sender<ToMeshi
 
     let mut implementation = ClientImpl::from_parts(client_rx, meshing_tx, client);
 
-    println!("Started server");
-
     loop {
         implementation.send_messages();
 
@@ -98,7 +96,7 @@ impl<S, R, M> ClientImpl<S, R, M> where
                                 self.received_messages += 1;
                             },
                             ToClient::NewChunkInfo(pos, info) => {
-                                println!("Received ChunkInfo @ {:?}", pos);
+                                //println!("Received ChunkInfo @ {:?}", pos);
                                 self.meshing_tx.send(ToMeshing::NewChunkInfo(pos, info)).unwrap();
                             }
                         },
@@ -123,7 +121,7 @@ impl<S, R, M> ClientImpl<S, R, M> where
                 println!("Reconnecting to server...");
             }
             if self.received_messages >= 1024 {
-                println!("Network: received {} messages", self.received_messages);
+                //println!("Network: received {} messages", self.received_messages);
                 self.received_messages = 0;
             }
         }

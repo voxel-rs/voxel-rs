@@ -76,7 +76,7 @@ impl MeshingImpl {
     fn handle_message(&mut self, message: ToMeshing) {
         match message {
             ToMeshing::AllowChunk(pos) => {
-                println!("Meshing: allowed chunk @ {:?}", pos);
+                //println!("Meshing: allowed chunk @ {:?}", pos);
                 self.chunks.insert(pos, RefCell::new(ChunkState::Received(0, Chunk {
                     blocks: Box::new([[[::block::BlockId::from(0); CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE]),
                     sides: Box::new([[[0xFF; CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE]),
@@ -88,7 +88,7 @@ impl MeshingImpl {
                     if let ChunkState::Received(ref mut fragment_count, ref mut chunk) = *state.borrow_mut() {
                         *fragment_count += 1;
                         if *fragment_count == CHUNK_SIZE*CHUNK_SIZE {
-                            println!("Meshing: new full chunk !");
+                            //println!("Meshing: new full chunk !");
                         }
                         chunk.blocks[fpos.0][fpos.1] = (*frag).clone();
                     }
@@ -104,13 +104,13 @@ impl MeshingImpl {
                         }
                         *fragment_count += void_fragments;
                         if *fragment_count == CHUNK_SIZE*CHUNK_SIZE {
-                            println!("Meshing: new full chunk !");
+                            //println!("Meshing: new full chunk !");
                         }
                     }
                 }
             }
             ToMeshing::RemoveChunk(pos) => {
-                println!("Meshing: removed chunk @ {:?}", pos);
+                //println!("Meshing: removed chunk @ {:?}", pos);
                 self.chunks.remove(&pos);
             },
         }
@@ -141,7 +141,7 @@ impl MeshingImpl {
 
                 self.calculate_chunk_sides(pos.clone(), chunk);
                 self.input_tx.send(ToInput::NewChunkBuffer(pos.clone(), chunk.calculate_mesh(&self.block_registry))).unwrap();
-                println!("Meshing: updated chunk @ {:?}", pos);
+                //println!("Meshing: updated chunk @ {:?}", pos);
                 chunk_copy = chunk.clone();
             }
             else {

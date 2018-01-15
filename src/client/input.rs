@@ -361,7 +361,7 @@ impl InputImpl {
             match message {
                 ToInput::NewChunkBuffer(pos, vertices) => {
                     assert!(vertices.len()%3 == 0); // Triangles should have 3 vertices
-                    println!("Input: received vertex buffer @ {:?}", pos);
+                    //println!("Input: received vertex buffer @ {:?}", pos);
                     if let Some(buffer @ &mut None) = self.rendering_state.chunks.get_mut(&pos) {
                         *buffer = Some(self.rendering_state.factory.create_vertex_buffer_with_slice(&vertices, ()));
                     }
@@ -421,7 +421,7 @@ impl InputImpl {
                     let pck = &player_chunk;
                     let pos = ChunkPos(pck.0 + i, pck.1 + j, pck.2 + k);
                     self.rendering_state.chunks.entry(pos.clone()).or_insert_with(|| {
-                        println!("Input: asked for buffer @ {:?}", pos);
+                        //println!("Input: asked for buffer @ {:?}", pos);
                         meshing_tx.send(ToMeshing::AllowChunk(pos.clone())).unwrap();
                         None
                     });

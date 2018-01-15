@@ -134,7 +134,7 @@ impl ChunkGenerator {
     }
 
     pub fn generate(&mut self, pos: &::block::ChunkPos) -> Box<::block::ChunkArray> {
-        println!("[Server] Game: generating chunk @ {:?}", pos);
+        //println!("[Server] Game: generating chunk @ {:?}", pos);
 
         let mut chunk = [[[BlockId::from(0); CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE];
         let mut rng = rand::StdRng::from_seed(&[((pos.0*4242424242 + pos.2)%1_000_000_007).abs() as usize]);
