@@ -27,7 +27,8 @@ use ::texture::{load_textures};
 use ::block::{BlockRegistry, Chunk, ChunkPos, create_block_air, create_block_cube};
 use ::input::KeyboardState;
 use ::render::frames::FrameCounter;
-use ::render::camera::Camera;
+// TODO: Don't use "*"
+use ::render::camera::*;
 use ::config::{Config, load_config};
 use ::texture::TextureRegistry;
 use ::util::Ticker;
@@ -68,7 +69,7 @@ pub fn start() {
 
 struct InputImpl {
     running: bool,
-    config: Config,
+    config: Arc<Config>,
     rx: Receiver<ToInput>,
     meshing_tx: Sender<ToMeshing>,
     network_tx: Sender<ToNetwork>,
@@ -111,7 +112,7 @@ impl InputImpl {
     pub fn new() -> Self {
         // Load config
         std::fs::create_dir_all(Path::new("cfg")).unwrap();
-        let config = load_config(Path::new("cfg/cfg.toml"));
+        let config = Arc::new(load_config(Path::new("cfg/cfg.toml")));
 
         // Window creation
         let events_loop = glutin::EventsLoop::new();
@@ -188,12 +189,13 @@ impl InputImpl {
 
             {
                 let meshing_tx = meshing_t.clone();
+                let input_tx = input_t.clone();
                 thread::spawn(move || {
                     thread::sleep(std::time::Duration::from_millis(2000));
                     client.connect("127.0.0.1:1106").expect("Failed to bind to socket.");
                     client.socket().unwrap().as_raw_udp_socket().set_recv_buffer_size(1024*1024*8).unwrap();
                     client.socket().unwrap().as_raw_udp_socket().set_send_buffer_size(1024*1024*8).unwrap();
-                    ::client::network::start(network_r, meshing_tx, client);
+                    ::client::network::start(network_r, meshing_tx, input_tx, client);
                     //client.disconnect();
                 });
                 println!("Started network thread");
@@ -216,9 +218,9 @@ impl InputImpl {
                     }
                     //server.shutdown();
                 });
-
+                let config = config.clone();
                 thread::spawn(move || {
-                    ::server::game::start(game_rx, network_tx);
+                    ::server::game::start(game_rx, network_tx, config);
                 });
             }
 
@@ -366,6 +368,9 @@ impl InputImpl {
                         *buffer = Some(self.rendering_state.factory.create_vertex_buffer_with_slice(&vertices, ()));
                     }
                 },
+                ToInput::SetPos(pos) => {
+                    self.game_state.camera.set_pos([pos.0 as f32, pos.1 as f32, pos.2 as f32]);
+                },
             }
         }
     }
@@ -383,13 +388,32 @@ impl InputImpl {
         let elapsed = self.game_state.timer.elapsed();
         self.game_state.camera.tick(elapsed.subsec_nanos() as f32/1_000_000_000.0 +  elapsed.as_secs() as f32, &self.game_state.keyboard_state);
         self.game_state.timer = Instant::now();
+        let &mut InputImpl {
+            ref network_tx,
+            ref mut ticker,
+            ref game_state,
+            ..
+        } = self;
 
         // Send updated position to network
-        if self.ticker.try_tick() {
-            self.network_tx.send(ToNetwork::SetPos({
+        if ticker.try_tick() {
+            /*self.network_tx.send(ToNetwork::SetPos({
                 let p = self.game_state.camera.get_pos();
                 (p.0 as f64, p.1 as f64, p.2 as f64)
-            })).unwrap();
+            })).unwrap();*/
+            let ks = &game_state.keyboard_state;
+            let keys = {
+                let mut mask = 0;
+                mask |= ((ks.is_key_pressed(MOVE_FORWARD) as u8) << 0) as u8;
+                mask |= ((ks.is_key_pressed(MOVE_LEFT) as u8) << 1) as u8;
+                mask |= ((ks.is_key_pressed(MOVE_BACKWARD) as u8) << 2) as u8;
+                mask |= ((ks.is_key_pressed(MOVE_RIGHT) as u8) << 3) as u8;
+                mask |= ((ks.is_key_pressed(MOVE_UP) as u8) << 4) as u8;
+                mask |= ((ks.is_key_pressed(MOVE_DOWN) as u8) << 5) as u8;
+                mask |= ((ks.is_key_pressed(CONTROL) as u8) << 6) as u8;
+                mask
+            };
+            network_tx.send(ToNetwork::SetPressedKeys(keys)).unwrap();
         }
     }
 

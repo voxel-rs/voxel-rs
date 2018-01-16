@@ -3,19 +3,19 @@ extern crate cobalt;
 
 use std::sync::mpsc::{Sender, Receiver, TryRecvError};
 use std::collections::VecDeque;
-use ::core::messages::client::{ToMeshing, ToNetwork};
+use ::core::messages::client::{ToInput, ToMeshing, ToNetwork};
 use ::core::messages::network::{ToClient, ToServer};
 use ::network::deserialize_fragment;
 use ::util::Ticker;
 
 use self::cobalt::{Client, ClientEvent, MessageKind, PacketModifier, Socket, RateLimiter};
 
-pub fn start<S, R, M>(client_rx: Receiver<ToNetwork>, meshing_tx: Sender<ToMeshing>, client: Client<S, R, M>) where
+pub fn start<S, R, M>(client_rx: Receiver<ToNetwork>, meshing_tx: Sender<ToMeshing>, input_tx: Sender<ToInput>, client: Client<S, R, M>) where
     S: Socket,
     R: RateLimiter,
     M: PacketModifier {
 
-    let mut implementation = ClientImpl::from_parts(client_rx, meshing_tx, client);
+    let mut implementation = ClientImpl::from_parts(client_rx, meshing_tx, input_tx, client);
 
     loop {
         implementation.send_messages();
@@ -33,6 +33,7 @@ struct ClientImpl<S, R, M> where
 
     client_rx: Receiver<ToNetwork>,
     meshing_tx: Sender<ToMeshing>,
+    input_tx: Sender<ToInput>,
     client: Client<S, R, M>,
     connected: bool,
     pending_messages: VecDeque<ToNetwork>,
@@ -45,11 +46,12 @@ impl<S, R, M> ClientImpl<S, R, M> where
     R: RateLimiter,
     M: PacketModifier {
 
-    pub fn from_parts(client_rx: Receiver<ToNetwork>, meshing_tx: Sender<ToMeshing>, client: Client<S, R, M>) -> Self {
+    pub fn from_parts(client_rx: Receiver<ToNetwork>, meshing_tx: Sender<ToMeshing>, input_tx: Sender<ToInput>, client: Client<S, R, M>) -> Self {
         let tick_rate = client.config().send_rate as u32;
         ClientImpl {
             client_rx,
             meshing_tx,
+            input_tx,
             client,
             connected: false,
             pending_messages: VecDeque::new(),
@@ -74,7 +76,7 @@ impl<S, R, M> ClientImpl<S, R, M> where
         if self.connected {
             while let Some(message) = self.pending_messages.pop_front() {
                 let (out, kind) = match message {
-                    ToNetwork::SetPos(pos) => (ToServer::SetPosition(pos), MessageKind::Instant),
+                    ToNetwork::SetPressedKeys(keys) => (ToServer::SetPressedKeys(keys), MessageKind::Instant),
                     ToNetwork::SetRenderDistance(render_distance) => (ToServer::SetRenderDistance(render_distance), MessageKind::Reliable),
                 };
                 self.client.connection().unwrap().send(kind, bincode::serialize(&out, bincode::Infinite).unwrap());
@@ -98,7 +100,10 @@ impl<S, R, M> ClientImpl<S, R, M> where
                             ToClient::NewChunkInfo(pos, info) => {
                                 //println!("Received ChunkInfo @ {:?}", pos);
                                 self.meshing_tx.send(ToMeshing::NewChunkInfo(pos, info)).unwrap();
-                            }
+                            },
+                            ToClient::SetPos(pos) => {
+                                self.input_tx.send(ToInput::SetPos(pos)).unwrap();
+                            },
                         },
                         ClientEvent::Connection => {
                             self.connected = true;

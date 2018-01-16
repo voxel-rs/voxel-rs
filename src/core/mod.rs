@@ -4,12 +4,13 @@ pub mod messages {
         use ::player::PlayerPos;
 
         pub enum ToNetwork {
-            SetPos(PlayerPos),
+            SetPressedKeys(u8),
             SetRenderDistance(u64),
         }
 
         pub enum ToInput {
             NewChunkBuffer(ChunkPos, Vec<::Vertex>),
+            SetPos(PlayerPos),
         }
 
         pub enum ToMeshing {
@@ -28,11 +29,12 @@ pub mod messages {
         pub enum ToClient {
             NewChunkFragment(ChunkPos, FragmentPos, Vec<u8>),
             NewChunkInfo(ChunkPos, ChunkInfo),
+            SetPos(PlayerPos),
         }
 
         #[derive(Serialize, Deserialize)]
         pub enum ToServer {
-            SetPosition(PlayerPos),
+            SetPressedKeys(u8),
             SetRenderDistance(u64),
         }
     }
@@ -48,6 +50,7 @@ pub mod messages {
 
         pub enum ToNetwork {
             NewChunk(ConnectionID, ChunkPos, Box<ChunkArray>),
+            SetPos(ConnectionID, PlayerPos),
         }
 
         #[derive(Debug)]
@@ -58,7 +61,7 @@ pub mod messages {
         #[derive(Debug)]
         pub enum ToGamePlayer {
             Connect,
-            SetPos(PlayerPos),
+            SetPressedKeys(u8),
             SetRenderDistance(u64),
             Disconnect,
         }

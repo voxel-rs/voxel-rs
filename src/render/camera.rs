@@ -5,13 +5,13 @@ use self::cgmath::{Deg, Euler, Matrix4, Quaternion, Vector3, perspective};
 use ::input::KeyboardState;
 
 // TODO: Don't hardcode this
-const MOVE_FORWARD: u32 = 17;
-const MOVE_LEFT: u32 = 30;
-const MOVE_BACKWARD: u32 = 31;
-const MOVE_RIGHT: u32 = 32;
-const MOVE_UP: u32 = 57;
-const MOVE_DOWN: u32 = 42;
-const CONTROL: u32 = 29;
+pub const MOVE_FORWARD: u32 = 17;
+pub const MOVE_LEFT: u32 = 30;
+pub const MOVE_BACKWARD: u32 = 31;
+pub const MOVE_RIGHT: u32 = 32;
+pub const MOVE_UP: u32 = 57;
+pub const MOVE_DOWN: u32 = 42;
+pub const CONTROL: u32 = 29;
 
 pub struct Camera {
     position: Vector3<f32>,
@@ -99,6 +99,10 @@ impl Camera {
 
     pub fn get_pos(&self) -> (f32, f32, f32) {
         (self.position[0], self.position[1], self.position[2])
+    }
+
+    pub fn set_pos(&mut self, new_pos: [f32; 3]) {
+        self.position = new_pos.into();
     }
 
     pub fn get_cam_dir(&self) -> [f32; 3] {

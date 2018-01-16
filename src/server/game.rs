@@ -4,41 +4,53 @@ extern crate rand;
 
 use ::CHUNK_SIZE;
 use ::block::{BlockId, ChunkArray, ChunkPos};
+use ::config::Config;
 use ::core::messages::server::{ToGame, ToNetwork};
 use ::player::Player;
+use ::util::Ticker;
 
 use ::std::collections::HashMap;
+use ::std::sync::Arc;
 use ::std::sync::mpsc::{Sender, Receiver};
+use ::std::time::Instant;
 
 use self::cobalt::ConnectionID;
 use self::noise::{NoiseModule, Perlin, Seedable};
 use self::rand::{SeedableRng, Rng};
 
-pub fn start(rx: Receiver<ToGame>, network_tx: Sender<ToNetwork>) {
-    let mut implementation = GameImpl::from_parts(rx, network_tx);
+pub fn start(rx: Receiver<ToGame>, network_tx: Sender<ToNetwork>, config: Arc<Config>) {
+    let mut implementation = GameImpl::from_parts(rx, network_tx, config);
     loop {
         implementation.process_messages();
+
+        implementation.tick_game();
 
         implementation.send_chunks();
     }
 }
 
 struct GameImpl {
+    config: Arc<Config>,
     rx: Receiver<ToGame>,
     network_tx: Sender<ToNetwork>,
     chunks: HashMap<ChunkPos, Box<ChunkArray>>,
     generator: ChunkGenerator,
     players: HashMap<ConnectionID, Player>,
+    last_tick: Instant,
+    last_update: Ticker,
 }
 
 impl GameImpl {
-    pub fn from_parts(rx: Receiver<ToGame>, network_tx: Sender<ToNetwork>) -> Self {
+    pub fn from_parts(rx: Receiver<ToGame>, network_tx: Sender<ToNetwork>, config: Arc<Config>) -> Self {
         Self {
+            config,
             rx,
             network_tx,
             chunks: HashMap::new(),
             generator: ChunkGenerator::new(),
             players: HashMap::new(),
+            last_tick: Instant::now(),
+            last_update: Ticker::from_tick_rate(60),
         }
     }
 
@@ -53,17 +65,31 @@ impl GameImpl {
             ToGame::PlayerEvent(id, ev) => match ev {
                 Ev::Connect => {
                     self.players.insert(id, Player {
-                        pos: (0.0, -115.0, 0.0),
+                        pos: (self.config.player_x as f64, self.config.player_y as f64, self.config.player_z as f64),
                         render_distance: 0,
                         chunks: HashMap::new(),
+                        keys: 0,
                     });
                 },
                 Ev::Disconnect => {
                     self.players.remove(&id);
                 },
-                Ev::SetPos(pos) => self.players.get_mut(&id).unwrap().pos = pos,
+                Ev::SetPressedKeys(keys) => self.players.get_mut(&id).unwrap().keys = keys,
                 Ev::SetRenderDistance(render_distance) => self.players.get_mut(&id).unwrap().render_distance = render_distance,
             },
+        }
+    }
+
+    pub fn tick_game(&mut self) {
+        let now = Instant::now();
+        let dt = now - self.last_tick;
+        self.last_tick = now;
+        let dt = dt.subsec_nanos() as f64 / 1_000_000_000.0;
+
+        for (_, p) in &mut self.players {
+            if p.keys & (1 << 0) > 0 {
+                p.pos.0 += dt * self.config.player_speed as f64;
+            }
         }
     }
 
@@ -73,6 +99,7 @@ impl GameImpl {
             ref mut players,
             ref mut generator,
             ref mut network_tx,
+            ref mut last_update,
             ..
         } = *self;
 
@@ -117,6 +144,13 @@ impl GameImpl {
             }
             false
         });
+
+        // Send physics updates
+        if last_update.try_tick() {
+            for (id, player) in players {
+                network_tx.send(ToNetwork::SetPos(*id, player.pos.clone())).unwrap();
+            }
+        }
     }
 }
 
