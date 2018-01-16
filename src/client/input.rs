@@ -386,7 +386,7 @@ impl InputImpl {
 
     pub fn move_camera(&mut self) {
         let elapsed = self.game_state.timer.elapsed();
-        self.game_state.camera.tick(elapsed.subsec_nanos() as f32/1_000_000_000.0 +  elapsed.as_secs() as f32, &self.game_state.keyboard_state);
+        //self.game_state.camera.tick(elapsed.subsec_nanos() as f32/1_000_000_000.0 +  elapsed.as_secs() as f32, &self.game_state.keyboard_state);
         self.game_state.timer = Instant::now();
         let &mut InputImpl {
             ref network_tx,

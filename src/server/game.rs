@@ -1,3 +1,4 @@
+extern crate cgmath;
 extern crate cobalt;
 extern crate noise;
 extern crate rand;
@@ -14,6 +15,7 @@ use ::std::sync::Arc;
 use ::std::sync::mpsc::{Sender, Receiver};
 use ::std::time::Instant;
 
+use self::cgmath::Deg;
 use self::cobalt::ConnectionID;
 use self::noise::{NoiseModule, Perlin, Seedable};
 use self::rand::{SeedableRng, Rng};
@@ -65,7 +67,9 @@ impl GameImpl {
             ToGame::PlayerEvent(id, ev) => match ev {
                 Ev::Connect => {
                     self.players.insert(id, Player {
-                        pos: (self.config.player_x as f64, self.config.player_y as f64, self.config.player_z as f64),
+                        pos: [self.config.player_x, self.config.player_y, self.config.player_z].into(),
+                        yaw: Deg(0.0),
+                        pitch: Deg(0.0),
                         render_distance: 0,
                         chunks: HashMap::new(),
                         keys: 0,
@@ -87,9 +91,7 @@ impl GameImpl {
         let dt = dt.subsec_nanos() as f64 / 1_000_000_000.0;
 
         for (_, p) in &mut self.players {
-            if p.keys & (1 << 0) > 0 {
-                p.pos.0 += dt * self.config.player_speed as f64;
-            }
+            p.tick(dt as f32, &self.config);
         }
     }
 
@@ -107,7 +109,7 @@ impl GameImpl {
         for (id, player) in players.iter_mut() {
             let mut nearby = Vec::new();
             let d = player.render_distance as i64;
-            let p = player.pos;
+            let p = player.get_pos();
             let (px, py, pz) = (p.0 as i64 / CHUNK_SIZE as i64, p.1 as i64 / CHUNK_SIZE as i64, p.2 as i64 / CHUNK_SIZE as i64);
             for x in -d..(d+1) {
                 for y in -d..(d+1) {
@@ -136,7 +138,7 @@ impl GameImpl {
         // Remove chunks that are far from all players
         chunks.retain(|pos, _| {
             for (_, player) in players.iter() {
-                let p = player.pos;
+                let p = player.get_pos();
                 let (px, py, pz) = (p.0 as i64 / CHUNK_SIZE as i64, p.1 as i64 / CHUNK_SIZE as i64, p.2 as i64 / CHUNK_SIZE as i64);
                 if i64::max(i64::max((pos.0 - px).abs(), (pos.1 - py).abs()), (pos.2 - pz).abs()) <= player.render_distance as i64 {
                     return true;
@@ -148,7 +150,7 @@ impl GameImpl {
         // Send physics updates
         if last_update.try_tick() {
             for (id, player) in players {
-                network_tx.send(ToNetwork::SetPos(*id, player.pos.clone())).unwrap();
+                network_tx.send(ToNetwork::SetPos(*id, player.get_pos().clone())).unwrap();
             }
         }
     }
