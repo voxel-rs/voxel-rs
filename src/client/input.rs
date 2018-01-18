@@ -123,9 +123,15 @@ impl InputImpl {
         let (window, device, mut factory, main_color, main_depth) =
             gfx_window_glutin::init::<ColorFormat, DepthFormat>(builder, context, &events_loop);
 
-        let pso = factory.create_pipeline_simple(
+        let shader_set = factory.create_shader_set(
             include_bytes!("../shader/vertex_150.glslv"),
-            include_bytes!("../shader/vertex_150.glslf"),
+            include_bytes!("../shader/vertex_150.glslf")
+        ).unwrap();
+
+        let pso = factory.create_pipeline_state(
+            &shader_set,
+            self::gfx::Primitive::TriangleList,
+            self::gfx::state::Rasterizer::new_fill().with_cull_back(),
             pipe::new()
         ).unwrap();
 
