@@ -175,7 +175,7 @@ impl ChunkGenerator {
 
 
                 // Caves
-                for s in 0..9{
+                for s in 0..16{
                     let cave_noise_1 = (100.0*(1.0 + self.perlin.get([
                         0.005*(0.0021 + (CHUNK_SIZE as i64 * pos.0 + i as i64) as f64),
                         50.0*s as f64,
@@ -184,14 +184,18 @@ impl ChunkGenerator {
                         0.005*(0.0021 + (CHUNK_SIZE as i64 * pos.0 + i as i64) as f64),
                         50.0*s  as f64 + 80.0,
                         0.005*(0.0021 + (CHUNK_SIZE as i64 * pos.2 + j as i64) as f64)]))) as i64;
+                    let cave_noise_3 = (100.0*(1.0 + self.perlin.get([
+                        0.005*(0.0021 + (CHUNK_SIZE as i64 * pos.0 + i as i64) as f64),
+                        50.0*s  as f64 + 80.0,
+                        0.005*(0.0021 + (CHUNK_SIZE as i64 * pos.2 + j as i64) as f64)]))) as i64;
 
-                    let cave_deep = -32 + (96.0*(1.0+self.perlin.get([
+                    let cave_deep = -16 + (96.0*(1.0+self.perlin.get([
                         0.005*(0.0021 + (CHUNK_SIZE as i64 * pos.0 + i as i64) as f64/2.0 ),
                         100.0*s as f64,
                         0.005*(0.0021 + (CHUNK_SIZE as i64 * pos.2 + j as i64) as f64/2.0 )]))) as i64;
 
                     for k in 0..CHUNK_SIZE {
-                        if (cave_noise_1 > 45 && cave_noise_1 < 50)  || (cave_noise_2 > 45 && cave_noise_2 < 50) {
+                        if (cave_noise_1 > 45 && cave_noise_1 < 50)  || (cave_noise_2 > 45 && cave_noise_2 < 50) || (cave_noise_3 > 45 && cave_noise_3 < 50) {
                             let cd = pos.1*CHUNK_SIZE as i64 + k as i64;
                             if cd > height - cave_deep - 5 && cd <= height - cave_deep {
                                 chunk[i][k][j] = BlockId::from(0); // TO DO : REPLACE WITH FILL SPHERE
@@ -199,6 +203,28 @@ impl ChunkGenerator {
                         }
                     }
                 }
+
+                /*for k in 0..CHUNK_SIZE {
+                      let cave_noise = (50.0*(1.0 + self.perlin.get([
+                        0.02*(0.0021 + (CHUNK_SIZE as i64 * pos.0 + i as i64) as f64),
+                        0.02*(0.0021 + (CHUNK_SIZE as i64 * pos.1 + k as i64) as f64),
+                        0.02*(0.0021 + (CHUNK_SIZE as i64 * pos.2 + j as i64) as f64)]))) as i64;
+
+                      let cd = pos.1*CHUNK_SIZE as i64 + k as i64;
+                      let mut dy = 15 + cd - height;
+                      if dy > 15{
+                        dy = 15;
+                      }
+                      if dy < 0{
+                        dy = 0;
+                      }
+
+                      if cave_noise > 85 + dy{
+                            chunk[i][k][j] = BlockId::from(0);
+                      }
+
+                }*/
+
             }
         }
         let theta: f64 = rng.gen_range(0.0, 2.0*3.14);
