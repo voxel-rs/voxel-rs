@@ -10,6 +10,16 @@ use self::cgmath::prelude::*;
 
 pub type PlayerPos = (f64, f64, f64);
 
+/// A player's inputs
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PlayerInput {
+    pub keys: u8,
+    /// Yaw in degrees
+    pub yaw: f32,
+    /// Yaw in degrees
+    pub pitch: f32,
+}
+
 /// A server-side player
 pub struct Player {
     pub pos: Vector3<f32>,
@@ -50,5 +60,11 @@ impl Player {
 
     pub fn get_pos(&self) -> PlayerPos {
         (self.pos[0] as f64, self.pos[1] as f64, self.pos[2] as f64)
+    }
+
+    pub fn set_input(&mut self, input: &PlayerInput) {
+        self.keys = input.keys;
+        self.yaw = Deg(input.yaw);
+        self.pitch = Deg(input.pitch);
     }
 }

@@ -112,4 +112,8 @@ impl Camera {
             z: -self.pitch.cos() * self.yaw.cos(),
         }).into()
     }
+
+    pub fn get_yaw_pitch(&self) -> (f32, f32) {
+        (self.yaw.0, self.pitch.0)
+    }
 }

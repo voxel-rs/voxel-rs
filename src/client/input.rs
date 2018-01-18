@@ -32,6 +32,7 @@ use ::render::camera::*;
 use ::config::{Config, load_config};
 use ::texture::TextureRegistry;
 use ::util::Ticker;
+use ::player::PlayerInput;
 
 type PipeDataType = pipe::Data<gfx_device_gl::Resources>;
 type PsoType = gfx::PipelineState<gfx_device_gl::Resources, pipe::Meta>;
@@ -401,8 +402,8 @@ impl InputImpl {
                 let p = self.game_state.camera.get_pos();
                 (p.0 as f64, p.1 as f64, p.2 as f64)
             })).unwrap();*/
-            let ks = &game_state.keyboard_state;
             let keys = {
+                let ks = &game_state.keyboard_state;
                 let mut mask = 0;
                 mask |= ((ks.is_key_pressed(MOVE_FORWARD) as u8) << 0) as u8;
                 mask |= ((ks.is_key_pressed(MOVE_LEFT) as u8) << 1) as u8;
@@ -413,7 +414,8 @@ impl InputImpl {
                 mask |= ((ks.is_key_pressed(CONTROL) as u8) << 6) as u8;
                 mask
             };
-            network_tx.send(ToNetwork::SetPressedKeys(keys)).unwrap();
+            let (yaw, pitch) = game_state.camera.get_yaw_pitch();
+            network_tx.send(ToNetwork::SetInput(PlayerInput { keys, yaw, pitch})).unwrap();
         }
     }
 

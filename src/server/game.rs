@@ -78,7 +78,7 @@ impl GameImpl {
                 Ev::Disconnect => {
                     self.players.remove(&id);
                 },
-                Ev::SetPressedKeys(keys) => self.players.get_mut(&id).unwrap().keys = keys,
+                Ev::SetInput(input) => self.players.get_mut(&id).unwrap().set_input(&input),
                 Ev::SetRenderDistance(render_distance) => self.players.get_mut(&id).unwrap().render_distance = render_distance,
             },
         }

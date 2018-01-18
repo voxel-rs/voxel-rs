@@ -65,7 +65,7 @@ impl<S, R, M> ServerImpl<S, R, M> where
                 ServerEvent::ConnectionClosed(id, _) |
                 ServerEvent::ConnectionLost(id, _) => Some((id, ToGamePlayer::Disconnect)),
                 ServerEvent::Message(id, data) => Some((id, match bincode::deserialize(data.as_ref()).unwrap() {
-                    ToServer::SetPressedKeys(keys) => ToGamePlayer::SetPressedKeys(keys),
+                    ToServer::SetInput(input) => ToGamePlayer::SetInput(input),
                     ToServer::SetRenderDistance(render_distance) => ToGamePlayer::SetRenderDistance(render_distance),
                 })),
                 _ => None,

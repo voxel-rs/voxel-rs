@@ -1,10 +1,10 @@
 pub mod messages {
     pub mod client {
         use ::block::{ChunkInfo, ChunkFragment, ChunkPos, FragmentPos};
-        use ::player::PlayerPos;
+        use ::player::{PlayerInput, PlayerPos};
 
         pub enum ToNetwork {
-            SetPressedKeys(u8),
+            SetInput(PlayerInput),
             SetRenderDistance(u64),
         }
 
@@ -23,7 +23,7 @@ pub mod messages {
 
     pub mod network {
         use ::block::{ChunkInfo, ChunkPos, FragmentPos};
-        use ::player::PlayerPos;
+        use ::player::{PlayerInput, PlayerPos};
 
         #[derive(Serialize, Deserialize)]
         pub enum ToClient {
@@ -34,7 +34,7 @@ pub mod messages {
 
         #[derive(Serialize, Deserialize)]
         pub enum ToServer {
-            SetPressedKeys(u8),
+            SetInput(PlayerInput),
             SetRenderDistance(u64),
         }
     }
@@ -43,7 +43,7 @@ pub mod messages {
         extern crate cobalt;
 
         use ::block::{ChunkArray, ChunkPos};
-        use ::player::PlayerPos;
+        use ::player::{PlayerInput, PlayerPos};
 
         use self::cobalt::ConnectionID;
 
@@ -61,7 +61,7 @@ pub mod messages {
         #[derive(Debug)]
         pub enum ToGamePlayer {
             Connect,
-            SetPressedKeys(u8),
+            SetInput(PlayerInput),
             SetRenderDistance(u64),
             Disconnect,
         }

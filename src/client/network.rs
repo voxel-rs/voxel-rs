@@ -76,7 +76,7 @@ impl<S, R, M> ClientImpl<S, R, M> where
         if self.connected {
             while let Some(message) = self.pending_messages.pop_front() {
                 let (out, kind) = match message {
-                    ToNetwork::SetPressedKeys(keys) => (ToServer::SetPressedKeys(keys), MessageKind::Instant),
+                    ToNetwork::SetInput(input) => (ToServer::SetInput(input), MessageKind::Instant),
                     ToNetwork::SetRenderDistance(render_distance) => (ToServer::SetRenderDistance(render_distance), MessageKind::Reliable),
                 };
                 self.client.connection().unwrap().send(kind, bincode::serialize(&out, bincode::Infinite).unwrap());
