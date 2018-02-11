@@ -91,7 +91,7 @@ impl GameImpl {
         let dt = dt.subsec_nanos() as f64 / 1_000_000_000.0;
 
         for (_, p) in &mut self.players {
-            p.tick(dt as f32, &self.config);
+            p.tick(dt, &self.config);
         }
     }
 
@@ -110,7 +110,8 @@ impl GameImpl {
             let mut nearby = Vec::new();
             let d = player.render_distance as i64;
             let p = player.get_pos();
-            let (px, py, pz) = (p.0 as i64 / CHUNK_SIZE as i64, p.1 as i64 / CHUNK_SIZE as i64, p.2 as i64 / CHUNK_SIZE as i64);
+            // player_chunk
+            let pc = p.chunk_pos();
             for x in -d..(d+1) {
                 for y in -d..(d+1) {
                     for z in -d..(d+1) {
@@ -121,7 +122,10 @@ impl GameImpl {
             // Sort chunks by squared distance to the player
             nearby.sort_unstable_by_key(|&(x, y, z)| x*x + y*y + z*z);
             for (x, y, z) in nearby.drain(..) {
-                let pos = ChunkPos(px + x, py + y, pz + z);
+                let mut pos = ChunkPos([x, y, z]);
+                for i in 0..3 {
+                    pos.0[i] += pc.0[i];
+                }
                 player.chunks.entry(pos.clone()).or_insert_with(|| {
                     let chunk = chunks.entry(pos.clone()).or_insert(generator.generate(&pos));
                     network_tx.send(ToNetwork::NewChunk(*id, pos, chunk.clone())).unwrap();
@@ -131,7 +135,7 @@ impl GameImpl {
             // Remove chunks that are too far away
             let render_distance = player.render_distance;
             player.chunks.retain(|pos, _| {
-                i64::max(i64::max((pos.0 - px).abs(), (pos.1 - py).abs()), (pos.2 - pz)) <= render_distance as i64
+                pos.orthogonal_dist(pc) <= render_distance
             });
         }
 
@@ -139,8 +143,7 @@ impl GameImpl {
         chunks.retain(|pos, _| {
             for (_, player) in players.iter() {
                 let p = player.get_pos();
-                let (px, py, pz) = (p.0 as i64 / CHUNK_SIZE as i64, p.1 as i64 / CHUNK_SIZE as i64, p.2 as i64 / CHUNK_SIZE as i64);
-                if i64::max(i64::max((pos.0 - px).abs(), (pos.1 - py).abs()), (pos.2 - pz).abs()) <= player.render_distance as i64 {
+                if p.chunk_pos().orthogonal_dist(*pos) <= player.render_distance {
                     return true;
                 }
             }
@@ -171,28 +174,27 @@ impl ChunkGenerator {
 
     pub fn generate(&mut self, pos: &::block::ChunkPos) -> Box<::block::ChunkArray> {
         //println!("[Server] Game: generating chunk @ {:?}", pos);
-
+        let (cx, cy, cz) = (pos.0[0], pos.0[1], pos.0[2]);
         let mut chunk = [[[BlockId::from(0); CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE];
-        let mut rng = rand::StdRng::from_seed(&[((pos.0*4242424242 + pos.2)%1_000_000_007).abs() as usize]);
+        let mut rng = rand::StdRng::from_seed(&[((cx*4242424242 + cz)%1_000_000_007).abs() as usize]);
         for i in 0..CHUNK_SIZE {
             for j in 0..CHUNK_SIZE {
                 let height = (150.0*self.perlin.get([
-                    0.005*(0.0021 + (CHUNK_SIZE as i64 * pos.0 + i as i64) as f64/3.0),
+                    0.005*(0.0021 + (CHUNK_SIZE as i64 * cx + i as i64) as f64/3.0),
                     0.5,
-                    0.005*(0.0021 + (CHUNK_SIZE as i64 * pos.2 + j as i64) as f64/3.0)])) as i64;
-
+                    0.005*(0.0021 + (CHUNK_SIZE as i64 * cz + j as i64) as f64/3.0)])) as i64;
 
                 for k in 0..CHUNK_SIZE {
 
                     let coal_noise = (100.0*(1.0+self.perlin.get([
-                        0.1*(CHUNK_SIZE as i64 * pos.0 + i as i64) as f64,
-                        0.1*(CHUNK_SIZE as i64 * pos.1 + k as i64) as f64,
-                        0.1*(CHUNK_SIZE as i64 * pos.2 + j as i64) as f64]))) as i64;
+                        0.1*(CHUNK_SIZE as i64 * cx + i as i64) as f64,
+                        0.1*(CHUNK_SIZE as i64 * cy + k as i64) as f64,
+                        0.1*(CHUNK_SIZE as i64 * cz + j as i64) as f64]))) as i64;
 
-                    if (pos.1*CHUNK_SIZE as i64 + k as i64) < height {
+                    if (cy*CHUNK_SIZE as i64 + k as i64) < height {
                         // Dirt
                         chunk[i][k][j] = BlockId::from(1);
-                        if (pos.1*CHUNK_SIZE as i64 + k as i64) < height - 5{
+                        if (cy*CHUNK_SIZE as i64 + k as i64) < height - 5{
                             // Stone
                             if coal_noise > 10 && coal_noise < 15{
                                 chunk[i][k][j] = BlockId::from(6);
@@ -201,34 +203,31 @@ impl ChunkGenerator {
                             }
                         }
                     }
-                    else if (pos.1*CHUNK_SIZE as i64 + k as i64) == height {
+                    else if (cy*CHUNK_SIZE as i64 + k as i64) == height {
                         // Grass
                         chunk[i][k][j] = BlockId::from(2);
                     }
                 }
 
-
-
-
                 // Caves
-                for s in 0..9{
+                for s in 0..9 {
                     let cave_noise_1 = (100.0*(1.0 + self.perlin.get([
-                        0.005*(0.0021 + (CHUNK_SIZE as i64 * pos.0 + i as i64) as f64),
+                        0.005*(0.0021 + (CHUNK_SIZE as i64 * cx + i as i64) as f64),
                         50.0*s as f64,
-                        0.005*(0.0021 + (CHUNK_SIZE as i64 * pos.2 + j as i64) as f64)]))) as i64;
+                        0.005*(0.0021 + (CHUNK_SIZE as i64 * cz + j as i64) as f64)]))) as i64;
                     let cave_noise_2 = (100.0*(1.0 + self.perlin.get([
-                        0.005*(0.0021 + (CHUNK_SIZE as i64 * pos.0 + i as i64) as f64),
+                        0.005*(0.0021 + (CHUNK_SIZE as i64 * cx + i as i64) as f64),
                         50.0*s  as f64 + 80.0,
-                        0.005*(0.0021 + (CHUNK_SIZE as i64 * pos.2 + j as i64) as f64)]))) as i64;
+                        0.005*(0.0021 + (CHUNK_SIZE as i64 * cz + j as i64) as f64)]))) as i64;
 
                     let cave_deep = -32 + (96.0*(1.0+self.perlin.get([
-                        0.005*(0.0021 + (CHUNK_SIZE as i64 * pos.0 + i as i64) as f64/2.0 ),
+                        0.005*(0.0021 + (CHUNK_SIZE as i64 * cx + i as i64) as f64/2.0 ),
                         100.0*s as f64,
-                        0.005*(0.0021 + (CHUNK_SIZE as i64 * pos.2 + j as i64) as f64/2.0 )]))) as i64;
+                        0.005*(0.0021 + (CHUNK_SIZE as i64 * cz + j as i64) as f64/2.0 )]))) as i64;
 
                     for k in 0..CHUNK_SIZE {
                         if (cave_noise_1 > 45 && cave_noise_1 < 50)  || (cave_noise_2 > 45 && cave_noise_2 < 50) {
-                            let cd = pos.1*CHUNK_SIZE as i64 + k as i64;
+                            let cd = cy*CHUNK_SIZE as i64 + k as i64;
                             if cd > height - cave_deep - 5 && cd <= height - cave_deep {
                                 chunk[i][k][j] = BlockId::from(0); // TO DO : REPLACE WITH FILL SPHERE
                             }
@@ -244,11 +243,11 @@ impl ChunkGenerator {
         // Spawn tree trunk
         for i in 0..7 {
             let height = (150.0*self.perlin.get([
-                    0.005*(0.0021 + (CHUNK_SIZE as i64 * pos.0 + x as i64) as f64/3.0),
+                    0.005*(0.0021 + (CHUNK_SIZE as i64 * cx + x as i64) as f64/3.0),
                     0.5,
-                    0.005*(0.0021 + (CHUNK_SIZE as i64 * pos.2 + y as i64) as f64/3.0)])) as i64;
-            if pos.1*CHUNK_SIZE as i64 <= height + i && height+i < (pos.1+1)*CHUNK_SIZE as i64 {
-                chunk[x][(height - pos.1*CHUNK_SIZE as i64 + i) as usize][y] = BlockId::from(3);
+                    0.005*(0.0021 + (CHUNK_SIZE as i64 * cz + y as i64) as f64/3.0)])) as i64;
+            if cy*CHUNK_SIZE as i64 <= height + i && height+i < (cy+1)*CHUNK_SIZE as i64 {
+                chunk[x][(height - cy*CHUNK_SIZE as i64 + i) as usize][y] = BlockId::from(3);
             }
             for ii in (-3i64)..4 {
                 for j in (-3i64)..4 {
@@ -266,7 +265,7 @@ impl ChunkGenerator {
                         for s in 0..k {
                             let xx = x as i64 + ii;
                             let yy = y as i64 + j;
-                            let zz = height - pos.1*CHUNK_SIZE as i64 + s + 3;
+                            let zz = height - cy*CHUNK_SIZE as i64 + s + 3;
                             if xx >= 0 && yy >= 0 && zz >= 0 && zz < CHUNK_SIZE as i64 && xx < CHUNK_SIZE as i64 && yy < CHUNK_SIZE as i64 {
                                 let xx = xx as usize;
                                 let yy = yy as usize;

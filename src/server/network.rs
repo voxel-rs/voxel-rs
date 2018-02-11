@@ -109,7 +109,7 @@ impl<S, R, M> ServerImpl<S, R, M> where
                                     'yiter: for (cy, chunkz) in chunkyz.iter().enumerate() {
                                         for block in chunkz.iter() {
                                             if block.0 != 0 { // Only send the message if the ChunkFragment is not empty.
-                                                connection.send(MessageKind::Reliable, bincode::serialize(&ToClient::NewChunkFragment(pos.clone(), ::block::FragmentPos(cx, cy), serialize_fragment(&chunkz)), bincode::Infinite).unwrap());
+                                                connection.send(MessageKind::Reliable, bincode::serialize(&ToClient::NewChunkFragment(pos.clone(), ::block::FragmentPos([cx, cy]), serialize_fragment(&chunkz)), bincode::Infinite).unwrap());
                                                 continue 'yiter;
                                             }
                                         }

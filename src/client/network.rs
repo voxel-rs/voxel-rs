@@ -94,12 +94,12 @@ impl<S, R, M> ClientImpl<S, R, M> where
                         ClientEvent::Message(bytes) => match bincode::deserialize(bytes.as_ref()).unwrap() {
                             ToClient::NewChunkFragment(pos, fpos, frag) => {
                                 //println!("Network: received chunk fragment @ {:?}, {:?}", pos, fpos);
-                                self.meshing_tx.send(ToMeshing::NewChunkFragment(pos, fpos, deserialize_fragment(&frag[..]))).unwrap();
+                                self.input_tx.send(ToInput::NewChunkFragment(pos, fpos, deserialize_fragment(&frag[..]))).unwrap();
                                 self.received_messages += 1;
                             },
                             ToClient::NewChunkInfo(pos, info) => {
                                 //println!("Received ChunkInfo @ {:?}", pos);
-                                self.meshing_tx.send(ToMeshing::NewChunkInfo(pos, info)).unwrap();
+                                self.input_tx.send(ToInput::NewChunkInfo(pos, info)).unwrap();
                             },
                             ToClient::SetPos(pos) => {
                                 self.input_tx.send(ToInput::SetPos(pos)).unwrap();

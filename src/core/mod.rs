@@ -1,6 +1,6 @@
 pub mod messages {
     pub mod client {
-        use ::block::{ChunkInfo, ChunkFragment, ChunkPos, FragmentPos};
+        use ::block::{Chunk, ChunkInfo, ChunkFragment, ChunkPos, FragmentPos};
         use ::player::{PlayerInput, PlayerPos};
 
         pub enum ToNetwork {
@@ -10,14 +10,13 @@ pub mod messages {
 
         pub enum ToInput {
             NewChunkBuffer(ChunkPos, Vec<::Vertex>),
+            NewChunkFragment(ChunkPos, FragmentPos, Box<ChunkFragment>),
+            NewChunkInfo(ChunkPos, ChunkInfo),
             SetPos(PlayerPos),
         }
 
         pub enum ToMeshing {
-            AllowChunk(ChunkPos),
-            NewChunkFragment(ChunkPos, FragmentPos, Box<ChunkFragment>),
-            NewChunkInfo(ChunkPos, ChunkInfo),
-            RemoveChunk(ChunkPos),
+            ComputeChunkMesh(ChunkPos, Chunk),
         }
     }
 

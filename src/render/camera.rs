@@ -3,6 +3,7 @@ extern crate cgmath;
 use self::cgmath::prelude::*;
 use self::cgmath::{Deg, Euler, Matrix4, Quaternion, Vector3, perspective};
 use ::input::KeyboardState;
+use ::player::PlayerPos;
 
 // TODO: Don't hardcode this
 pub const MOVE_FORWARD: u32 = 17;
@@ -14,14 +15,14 @@ pub const MOVE_DOWN: u32 = 42;
 pub const CONTROL: u32 = 29;
 
 pub struct Camera {
-    position: Vector3<f32>,
-    yaw: Deg<f32>,
-    pitch: Deg<f32>,
+    position: Vector3<f64>,
+    yaw: Deg<f64>,
+    pitch: Deg<f64>,
     win_w: u32,
     win_h: u32,
-    mouse_speed: Deg<f32>,
-    player_speed: f32,
-    ctrl_speedup: f32,
+    mouse_speed: Deg<f64>,
+    player_speed: f64,
+    ctrl_speedup: f64,
 }
 
 impl Camera {
@@ -39,9 +40,9 @@ impl Camera {
     }
 
     // TODO: Allow mouse inverting
-    pub fn update_cursor(&mut self, dx: f32, dy: f32) {
-        self.yaw += -self.mouse_speed * (dx as f32);
-        self.pitch += -self.mouse_speed * (dy as f32);
+    pub fn update_cursor(&mut self, dx: f64, dy: f64) {
+        self.yaw += -self.mouse_speed * (dx as f64);
+        self.pitch += -self.mouse_speed * (dy as f64);
 
         // Ensure the pitch stays within [-90; 90]
         if self.pitch < Deg(-90.0) {
@@ -52,7 +53,7 @@ impl Camera {
         }
     }
 
-    fn get_mv_direction(&self, angle: Deg<f32>) -> Vector3<f32> {
+    fn get_mv_direction(&self, angle: Deg<f64>) -> Vector3<f64> {
         let yaw = self.yaw + angle;
         Vector3 {
             x: -yaw.sin(),
@@ -61,7 +62,7 @@ impl Camera {
         }
     }
 
-    pub fn tick(&mut self, dt: f32, keys: &KeyboardState) {
+    pub fn tick(&mut self, dt: f64, keys: &KeyboardState) {
         let mut speedup = 1.0;
         if keys.is_key_pressed(CONTROL)
         { speedup = self.ctrl_speedup; }
@@ -79,8 +80,8 @@ impl Camera {
         { self.position.y -= speedup * self.player_speed * dt; }
     }
 
-    fn get_aspect_ratio(&self) -> f32 {
-        self.win_w as f32 / self.win_h as f32
+    fn get_aspect_ratio(&self) -> f64 {
+        self.win_w as f64 / self.win_h as f64
     }
 
     pub fn resize_window(&mut self, win_w: u32, win_h: u32) {
@@ -88,7 +89,7 @@ impl Camera {
         self.win_h = win_h;
     }
 
-    pub fn get_view_projection(&self) -> Matrix4<f32> {
+    pub fn get_view_projection(&self) -> Matrix4<f64> {
         let proj = perspective(Deg(45.0), self.get_aspect_ratio(), 0.1, 400.0);
 
         let rotation = Quaternion::from(Euler { x: Deg(0.0), y: self.yaw, z: Deg(0.0) }) * Quaternion::from(Euler { x: self.pitch, y: Deg(0.0), z: Deg(0.0) });
@@ -97,23 +98,23 @@ impl Camera {
         proj * (translation * Matrix4::from(rotation)).invert().unwrap()
     }
 
-    pub fn get_pos(&self) -> (f32, f32, f32) {
-        (self.position[0], self.position[1], self.position[2])
+    pub fn get_pos(&self) -> PlayerPos {
+        PlayerPos(self.position.into())
     }
 
-    pub fn set_pos(&mut self, new_pos: [f32; 3]) {
+    pub fn set_pos(&mut self, new_pos: [f64; 3]) {
         self.position = new_pos.into();
     }
 
-    pub fn get_cam_dir(&self) -> [f32; 3] {
-        (Vector3 {
+    pub fn get_cam_dir(&self) -> Vector3<f64> {
+        Vector3 {
             x: -self.pitch.cos() * self.yaw.sin(),
             y:  self.pitch.sin(),
             z: -self.pitch.cos() * self.yaw.cos(),
-        }).into()
+        }
     }
 
-    pub fn get_yaw_pitch(&self) -> (f32, f32) {
-        (self.yaw.0, self.pitch.0)
+    pub fn get_yaw_pitch(&self) -> [f64; 2] {
+        [self.yaw.0, self.pitch.0]
     }
 }

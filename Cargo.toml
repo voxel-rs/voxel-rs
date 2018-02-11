@@ -4,6 +4,8 @@ version = "0.1.0"
 # TODO: Add email
 authors = ["Technici4n"]
 
+[profile.release]
+debug = true
 
 [dependencies]
 gfx = "*"

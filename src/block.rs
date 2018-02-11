@@ -5,7 +5,7 @@ use ::{CHUNK_SIZE, Vertex};
 pub trait Block {
     /// Append the block's vertices to the current Vertex Buffers
     /// TODO: Use the Vertex type instead of Vec<>
-    fn render(&self, vertices: &mut Vec<Vertex>, adj: u8, delta: (u64, u64, u64));
+    fn render(&self, vertices: &mut Vec<Vertex>, adj: u8, delta: [u64; 3]);
     /// Does this block hide adjacent blocks ?
     fn is_opaque(&self) -> bool;
 }
@@ -20,26 +20,27 @@ pub struct BlockRegistry {
 
 pub type ChunkFragment = [BlockId; CHUNK_SIZE];
 pub type ChunkArray = [[ChunkFragment; CHUNK_SIZE]; CHUNK_SIZE];
+pub type ChunkSidesArray = [[[u8; CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE];
 pub type BlockRef = Box<Block + Send + Sync>;
 /// Indicates what non-void ```ChunkFragment```s a Chunk contains.
 /// It is stored as 32-bit integers so that common functions are implemented.
 pub type ChunkInfo = [u32; CHUNK_SIZE * CHUNK_SIZE / 32];
 
 /// Chunk type
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Chunk {
     /// Blocks in the chunk
     pub blocks: Box<ChunkArray>,
-    /// Bitmask to store adjacent empty blocks
-    pub sides: Box<[[[u8; CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE]>,
+    /// Empty blocks adjacent to the chunk (1 is for non-opaque, 0 is for opaque)
+    pub sides: Box<ChunkSidesArray>,
 }
 
 // TODO: Struct instead ?
-#[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
-pub struct ChunkPos(pub i64, pub i64, pub i64);
+#[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
+pub struct ChunkPos(pub [i64; 3]);
 
-#[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
-pub struct FragmentPos(pub usize, pub usize);
+#[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
+pub struct FragmentPos(pub [usize; 2]);
 
 pub struct BlockCube {
     uvs: [[[f32; 2]; 4]; 6],
@@ -67,7 +68,7 @@ impl Chunk {
     pub fn new() -> Chunk {
         Chunk {
             blocks: Box::new([[[BlockId(0); CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE]),
-            sides: Box::new([[[0b00111111; CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE]),
+            sides: Box::new([[[0b00000000; CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE]),
         }
     }
 
@@ -78,12 +79,22 @@ impl Chunk {
                 for k in 0..CHUNK_SIZE {
                     // Don't render hidden blocks
                     if self.sides[i][j][k] != 0xFF {
-                        blocks.get_block(self.blocks[i][j][k]).render(&mut vec, self.sides[i][j][k], (i as u64, j as u64, k as u64));
+                        blocks.get_block(self.blocks[i][j][k]).render(&mut vec, self.sides[i][j][k], [i as u64, j as u64, k as u64]);
                     }
                 }
             }
         }
         vec
+    }
+}
+
+impl ChunkPos {
+    pub fn orthogonal_dist(self, other: ChunkPos) -> u64 {
+        let mut maxcoord = 0;
+        for i in 0..3 {
+            maxcoord = i64::max(maxcoord, (other.0[i] - self.0[i]).abs());
+        }
+        maxcoord as u64
     }
 }
 
@@ -94,17 +105,19 @@ impl From<u16> for BlockId {
 }
 
 impl Block for BlockCube {
-    fn render(&self, vertices: &mut Vec<Vertex>, adj: u8, delta: (u64, u64, u64)) {
-        let (dx, dy, dz) = delta;
+    fn render(&self, vertices: &mut Vec<Vertex>, adj: u8, delta: [u64; 3]) {
         for face in 0..6 {
             if adj&(1 << face) > 0 {
                 let side = &FACES[face as usize];
                 for &pos in &FACE_ORDER {
-                    let coords = VERTICES[side[pos]];
+                    let mut coords = VERTICES[side[pos]];
+                    for i in 0..3 {
+                        coords[i] += delta[i] as f32;
+                    }
                     let uv_coords = self.uvs[face as usize][pos];
                     vertices.push(Vertex {
-                        pos: [coords[0] + dx as f32, coords[1] + dy as f32, coords[2] + dz as f32, 1.],
-                        uv: [uv_coords[0], uv_coords[1]],
+                        pos: [coords[0], coords[1], coords[2], 1.],
+                        uv: uv_coords,
                         normal: NORMALS[face as usize].clone(),
                     });
                 }
@@ -113,7 +126,7 @@ impl Block for BlockCube {
     }
 
     fn is_opaque(&self) -> bool {
-        false
+        true
     }
 }
 
@@ -139,12 +152,12 @@ pub fn create_block_air() -> BlockAir {
 }
 
 impl Block for BlockAir {
-    fn render(&self, _: &mut Vec<Vertex>, _: u8, _: (u64, u64, u64)) {
+    fn render(&self, _: &mut Vec<Vertex>, _: u8, _: [u64; 3]) {
 
     }
 
     fn is_opaque(&self) -> bool {
-        true
+        false
     }
 }
 
