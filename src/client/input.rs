@@ -256,12 +256,14 @@ impl InputImpl {
             {
                 let (game_tx, game_rx) = channel();
                 let (network_tx, network_rx) = channel();
+                let (worldgen_tx, worldgen_rx) = channel();
+                let game_t = game_tx.clone();
                 thread::spawn(move || {
                     match server.listen("0.0.0.0:1106") {
                         Ok(()) =>  {
                             server.socket().unwrap().as_raw_udp_socket().set_recv_buffer_size(1024*1024*8).unwrap();
                             server.socket().unwrap().as_raw_udp_socket().set_send_buffer_size(1024*1024*8).unwrap();
-                            ::server::network::start(network_rx, game_tx, server);
+                            ::server::network::start(network_rx, game_t, server);
                             //server.shutdown();
                         },
                         Err(e) => {
@@ -272,7 +274,11 @@ impl InputImpl {
                 });
                 let config = config.clone();
                 thread::spawn(move || {
-                    ::server::game::start(game_rx, network_tx, config);
+                    ::server::game::start(game_rx, network_tx, worldgen_tx, config);
+                });
+
+                thread::spawn(move || {
+                    ::server::worldgen::start(worldgen_rx, game_tx);
                 });
             }
 
@@ -453,13 +459,13 @@ impl InputImpl {
                     }
                 },
                 ToInput::NewChunkInfo(pos, info) => {
-                    // TODO: Check for existing info although it shouldn't matter !
                     if let Some(data) = self.game_state.chunks.get(&pos) {
                         let mut data = &mut *data.borrow_mut();
-                        for i in info.iter() {
-                            data.fragments += i.count_ones() as usize;
+                        for (from, to) in info.iter().zip(data.chunk_info.iter_mut()) {
+                            data.fragments -= to.count_ones() as usize;
+                            *to |= *from;
+                            data.fragments += to.count_ones() as usize;
                         }
-                        data.chunk_info = info;
                         // Update adjacent chunks
                         Self::check_finalize_chunk(pos, data, &self.game_state.chunks, &self.game_registries.block_registry);
                     }
@@ -492,7 +498,7 @@ impl InputImpl {
                     }
                 }
                 else {
-                    println!("Warning: LOST INFORMATION");
+                    println!("Warning: LOST INFORMATION. Chunk {:?} is not loaded!", pos);
                 }
             }
         }
@@ -556,9 +562,10 @@ impl InputImpl {
         let player_chunk = self.game_state.camera.get_pos().chunk_pos();
 
         // Fetch new close chunks
-        // render_distance + 1 because we need to store information about the adjacent chunks
-        // even if they are not yet loaded
-        let render_dist = self.config.render_distance+1;
+        // render_distance+2 because we need to store information about the adjacent chunks
+        // even if they are not yet loaded. We use +2 instead of +1 to have a small margin,
+        // just in case the packets don't arrive in the right order.
+        let render_dist = self.config.render_distance+2;
         for i in -render_dist..(render_dist+1) {
             for j in -render_dist..(render_dist+1) {
                 for k in -render_dist..(render_dist+1) {
@@ -580,7 +587,7 @@ impl InputImpl {
         }
 
         // Trash far chunks
-        let render_dist = (self.config.render_distance+1) as u64;
+        let render_dist = (self.config.render_distance+2) as u64;
         self.game_state.chunks.retain(|pos, _| {
             pos.orthogonal_dist(player_chunk) <= render_dist
         });

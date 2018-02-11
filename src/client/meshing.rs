@@ -1,6 +1,6 @@
 use std::sync::mpsc::{Sender, Receiver};
 use ::core::messages::client::{ToInput, ToMeshing};
-use ::block::{BlockRegistry, Chunk, ChunkPos};
+use ::block::{BlockRegistry, Chunk};
 use std::sync::Arc;
 use ::{CHUNK_SIZE};
 

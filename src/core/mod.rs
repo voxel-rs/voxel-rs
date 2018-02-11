@@ -55,6 +55,7 @@ pub mod messages {
         #[derive(Debug)]
         pub enum ToGame {
             PlayerEvent(ConnectionID, ToGamePlayer),
+            NewChunk(ChunkPos, Box<ChunkArray>),
         }
 
         #[derive(Debug)]
@@ -63,6 +64,10 @@ pub mod messages {
             SetInput(PlayerInput),
             SetRenderDistance(u64),
             Disconnect,
+        }
+
+        pub enum ToWorldgen {
+            GenerateChunk(ChunkPos),
         }
     }
 }
