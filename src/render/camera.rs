@@ -2,7 +2,6 @@ extern crate cgmath;
 
 use self::cgmath::prelude::*;
 use self::cgmath::{Deg, Euler, Matrix4, Quaternion, Vector3, perspective};
-use ::input::KeyboardState;
 use ::player::PlayerPos;
 
 // TODO: Don't hardcode this
@@ -21,8 +20,6 @@ pub struct Camera {
     win_w: u32,
     win_h: u32,
     mouse_speed: Deg<f64>,
-    player_speed: f64,
-    ctrl_speedup: f64,
 }
 
 impl Camera {
@@ -34,8 +31,6 @@ impl Camera {
             win_w,
             win_h,
             mouse_speed: Deg(config.mouse_speed),
-            player_speed: config.player_speed,
-            ctrl_speedup: config.ctrl_speedup,
         }
     }
 
@@ -51,33 +46,6 @@ impl Camera {
         if self.pitch > Deg(90.0) {
             self.pitch = Deg(90.0);
         }
-    }
-
-    fn get_mv_direction(&self, angle: Deg<f64>) -> Vector3<f64> {
-        let yaw = self.yaw + angle;
-        Vector3 {
-            x: -yaw.sin(),
-            y: 0.0,
-            z: -yaw.cos(),
-        }
-    }
-
-    pub fn tick(&mut self, dt: f64, keys: &KeyboardState) {
-        let mut speedup = 1.0;
-        if keys.is_key_pressed(CONTROL)
-        { speedup = self.ctrl_speedup; }
-        if keys.is_key_pressed(MOVE_FORWARD)
-        { self.position += speedup * self.get_mv_direction(Deg(0.0)).normalize() * (self.player_speed * dt); }
-        if keys.is_key_pressed(MOVE_LEFT)
-        { self.position += speedup * self.get_mv_direction(Deg(90.0)).normalize() * (self.player_speed * dt); }
-        if keys.is_key_pressed(MOVE_BACKWARD)
-        { self.position += speedup * self.get_mv_direction(Deg(180.0)).normalize() * (self.player_speed * dt); }
-        if keys.is_key_pressed(MOVE_RIGHT)
-        { self.position += speedup * self.get_mv_direction(Deg(270.0)).normalize() * (self.player_speed * dt); }
-        if keys.is_key_pressed(MOVE_UP)
-        { self.position.y += speedup * self.player_speed * dt; }
-        if keys.is_key_pressed(MOVE_DOWN)
-        { self.position.y -= speedup * self.player_speed * dt; }
     }
 
     fn get_aspect_ratio(&self) -> f64 {

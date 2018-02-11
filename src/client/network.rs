@@ -3,19 +3,19 @@ extern crate cobalt;
 
 use std::sync::mpsc::{Sender, Receiver, TryRecvError};
 use std::collections::VecDeque;
-use ::core::messages::client::{ToInput, ToMeshing, ToNetwork};
+use ::core::messages::client::{ToInput, ToNetwork};
 use ::core::messages::network::{ToClient, ToServer};
 use ::network::deserialize_fragment;
 use ::util::Ticker;
 
 use self::cobalt::{Client, ClientEvent, MessageKind, PacketModifier, Socket, RateLimiter};
 
-pub fn start<S, R, M>(client_rx: Receiver<ToNetwork>, meshing_tx: Sender<ToMeshing>, input_tx: Sender<ToInput>, client: Client<S, R, M>) where
+pub fn start<S, R, M>(client_rx: Receiver<ToNetwork>, input_tx: Sender<ToInput>, client: Client<S, R, M>) where
     S: Socket,
     R: RateLimiter,
     M: PacketModifier {
 
-    let mut implementation = ClientImpl::from_parts(client_rx, meshing_tx, input_tx, client);
+    let mut implementation = ClientImpl::from_parts(client_rx, input_tx, client);
 
     loop {
         implementation.send_messages();
@@ -32,7 +32,6 @@ struct ClientImpl<S, R, M> where
     M: PacketModifier {
 
     client_rx: Receiver<ToNetwork>,
-    meshing_tx: Sender<ToMeshing>,
     input_tx: Sender<ToInput>,
     client: Client<S, R, M>,
     connected: bool,
@@ -46,11 +45,10 @@ impl<S, R, M> ClientImpl<S, R, M> where
     R: RateLimiter,
     M: PacketModifier {
 
-    pub fn from_parts(client_rx: Receiver<ToNetwork>, meshing_tx: Sender<ToMeshing>, input_tx: Sender<ToInput>, client: Client<S, R, M>) -> Self {
+    pub fn from_parts(client_rx: Receiver<ToNetwork>, input_tx: Sender<ToInput>, client: Client<S, R, M>) -> Self {
         let tick_rate = client.config().send_rate as u32;
         ClientImpl {
             client_rx,
-            meshing_tx,
             input_tx,
             client,
             connected: false,

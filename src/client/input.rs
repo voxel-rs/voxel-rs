@@ -92,7 +92,7 @@ struct InputImpl {
     game_state: ClientGameState,
     rendering_state: RenderingState,
     debug_info: DebugInfo,
-    #[allow(dead_code)] game_registries: GameRegistries,
+    game_registries: GameRegistries,
     ticker: Ticker,
 }
 
@@ -246,14 +246,13 @@ impl InputImpl {
             }
 
             {
-                let meshing_tx = meshing_t.clone();
                 let input_tx = input_t.clone();
                 thread::spawn(move || {
                     thread::sleep(std::time::Duration::from_millis(2000));
                     client.connect("127.0.0.1:1106").expect("Failed to bind to socket.");
                     client.socket().unwrap().as_raw_udp_socket().set_recv_buffer_size(1024*1024*8).unwrap();
                     client.socket().unwrap().as_raw_udp_socket().set_send_buffer_size(1024*1024*8).unwrap();
-                    ::client::network::start(network_r, meshing_tx, input_tx, client);
+                    ::client::network::start(network_r, input_tx, client);
                     //client.disconnect();
                 });
                 println!("Started network thread");
@@ -520,8 +519,6 @@ impl InputImpl {
     }
 
     pub fn move_camera(&mut self) {
-        let elapsed = self.game_state.timer.elapsed();
-        //self.game_state.camera.tick(elapsed.subsec_nanos() as f32/1_000_000_000.0 +  elapsed.as_secs() as f32, &self.game_state.keyboard_state);
         self.game_state.timer = Instant::now();
         let &mut InputImpl {
             ref network_tx,
@@ -532,10 +529,6 @@ impl InputImpl {
 
         // Send updated position to network
         if ticker.try_tick() {
-            /*self.network_tx.send(ToNetwork::SetPos({
-                let p = self.game_state.camera.get_pos();
-                (p.0 as f64, p.1 as f64, p.2 as f64)
-            })).unwrap();*/
             let keys = {
                 let ks = &game_state.keyboard_state;
                 let mut mask = 0;
