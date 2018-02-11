@@ -65,7 +65,7 @@ impl<S, R, M> ServerImpl<S, R, M> where
                 ServerEvent::ConnectionClosed(id, _) |
                 ServerEvent::ConnectionLost(id, _) => Some((id, ToGamePlayer::Disconnect)),
                 ServerEvent::Message(id, data) => Some((id, match bincode::deserialize(data.as_ref()).unwrap() {
-                    ToServer::SetPosition(pos) => ToGamePlayer::SetPos(pos),
+                    ToServer::SetInput(input) => ToGamePlayer::SetInput(input),
                     ToServer::SetRenderDistance(render_distance) => ToGamePlayer::SetRenderDistance(render_distance),
                 })),
                 _ => None,
@@ -78,10 +78,18 @@ impl<S, R, M> ServerImpl<S, R, M> where
 
         // Internal messages
         while let Ok(message) = self.rx.try_recv() {
-            let id = match &message {
-                &ToNetwork::NewChunk(id, _, _) => id,
+            let (queue, id) = match &message {
+                &ToNetwork::NewChunk(id, _, _) => (true, id),
+                &ToNetwork::SetPos(id, pos) => {
+                    if let Ok(connection) = self.server.connection(&id) {
+                        connection.send(MessageKind::Instant, bincode::serialize(&ToClient::SetPos(pos), bincode::Infinite).unwrap());
+                    }
+                    (false, id)
+                }
             };
-            self.queues.entry(id).or_insert((Instant::now(), VecDeque::new())).1.push_back(message);
+            if queue {
+                self.queues.entry(id).or_insert((Instant::now(), VecDeque::new())).1.push_back(message);
+            }
         }
     }
 
@@ -101,7 +109,7 @@ impl<S, R, M> ServerImpl<S, R, M> where
                                     'yiter: for (cy, chunkz) in chunkyz.iter().enumerate() {
                                         for block in chunkz.iter() {
                                             if block.0 != 0 { // Only send the message if the ChunkFragment is not empty.
-                                                connection.send(MessageKind::Reliable, bincode::serialize(&ToClient::NewChunkFragment(pos.clone(), ::block::FragmentPos(cx, cy), serialize_fragment(&chunkz)), bincode::Infinite).unwrap());
+                                                connection.send(MessageKind::Reliable, bincode::serialize(&ToClient::NewChunkFragment(pos.clone(), ::block::FragmentPos([cx, cy]), serialize_fragment(&chunkz)), bincode::Infinite).unwrap());
                                                 continue 'yiter;
                                             }
                                         }
@@ -112,6 +120,7 @@ impl<S, R, M> ServerImpl<S, R, M> where
                                 }
                                 connection.send(MessageKind::Reliable, bincode::serialize(&ToClient::NewChunkInfo(pos, info), bincode::Infinite).unwrap());
                             },
+                            ToNetwork::SetPos(_, _) => unreachable!(),
                         }
                         *last_message = Instant::now();
                     }

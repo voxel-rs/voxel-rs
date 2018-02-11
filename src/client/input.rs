@@ -11,9 +11,10 @@ use std;
 use std::sync::mpsc::{channel, Sender, Receiver};
 use std::sync::Arc;
 use std::thread;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::path::Path;
 use std::time::Instant;
+use std::cell::RefCell;
 
 use gfx::traits::FactoryExt;
 use gfx::{Device, Factory};
@@ -24,19 +25,30 @@ use self::net2::UdpSocketExt;
 use ::{CHUNK_SIZE, ColorFormat, DepthFormat, pipe, PlayerData, Vertex, Transform};
 use ::core::messages::client::{ToInput, ToMeshing, ToNetwork};
 use ::texture::{load_textures};
-use ::block::{BlockRegistry, Chunk, ChunkPos, create_block_air, create_block_cube};
+use ::block::{BlockRegistry, Chunk, ChunkInfo, ChunkPos, ChunkSidesArray, create_block_air, create_block_cube};
 use ::input::KeyboardState;
 use ::render::frames::FrameCounter;
-use ::render::camera::Camera;
+// TODO: Don't use "*"
+use ::render::camera::*;
 use ::config::{Config, load_config};
 use ::texture::TextureRegistry;
 use ::util::Ticker;
+use ::player::PlayerInput;
 
 type PipeDataType = pipe::Data<gfx_device_gl::Resources>;
 type PsoType = gfx::PipelineState<gfx_device_gl::Resources, pipe::Meta>;
 type EncoderType = gfx::Encoder<gfx_device_gl::Resources, gfx_device_gl::CommandBuffer>;
 
 const CLEAR_COLOR: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
+
+const ADJ_CHUNKS: [[i64; 3]; 6] = [
+    [ 0,  0, -1],
+    [ 0,  0,  1],
+    [ 1,  0,  0],
+    [-1,  0,  0],
+    [ 0,  1,  0],
+    [ 0, -1,  0],
+];
 
 pub fn start() {
     let mut implementation = InputImpl::new();
@@ -45,31 +57,36 @@ pub fn start() {
         // Event handling
         implementation.process_events();
 
-        // Message handling
-        implementation.process_messages();
-
-        // Frames
-        implementation.update_frame_count();
-
-        // Ticking
-        implementation.move_camera();
-
         // Center cursor
         // TODO: Draw custom crossbar instead of using the system cursor.
         implementation.center_cursor();
 
-        // Fetch new chunks, and trash far chunks.
+        // Message handling
+        implementation.process_messages();
+
+        // Ticking
+        implementation.move_camera();
+
+        // Fetch new chunks, send new ones to meshing and trash far chunks.
         implementation.fetch_close_chunks();
+
+        // Process queued chunk messages
+        implementation.process_chunk_messages();
 
         // Render scene
         implementation.render();
+
+        // Frames
+        implementation.update_frame_count();
     }
 }
 
 struct InputImpl {
     running: bool,
-    config: Config,
+    config: Arc<Config>,
     rx: Receiver<ToInput>,
+    /// Chunk updates that need the chunks to be loaded in memory first depending on the player's position
+    pending_messages: VecDeque<ToInput>,
     meshing_tx: Sender<ToMeshing>,
     network_tx: Sender<ToNetwork>,
     game_state: ClientGameState,
@@ -86,6 +103,7 @@ struct ClientGameState {
     pub keyboard_state: KeyboardState,
     pub camera: Camera,
     pub timer: Instant,
+    pub chunks: HashMap<ChunkPos, RefCell<ChunkData>>,
 }
 
 struct RenderingState {
@@ -94,7 +112,6 @@ struct RenderingState {
     pub pso: PsoType,
     pub data: PipeDataType,
     pub encoder: EncoderType,
-    pub chunks: HashMap<ChunkPos, Option<(gfx::handle::Buffer<gfx_device_gl::Resources, Vertex>, gfx::Slice<gfx_device_gl::Resources>)>>,
 }
 
 struct GameRegistries {
@@ -107,11 +124,47 @@ struct DebugInfo {
     pub cnt: u32,
 }
 
+type BufferHandle3D = (gfx::handle::Buffer<gfx_device_gl::Resources, Vertex>, gfx::Slice<gfx_device_gl::Resources>);
+
+/// Chunk information stored by the client
+struct ChunkData {
+    /// The chunk data itself
+    pub chunk: Chunk,
+    /// How many fragments have been received
+    pub fragments: usize,
+    /// What adjacent chunks are loaded. This is a bit mask, and 1 means loaded.
+    /// All chunks loaded means that adj_chunks == 0b00111111
+    pub adj_chunks: u8,
+    /// The loaded bits
+    pub chunk_info: ChunkInfo,
+    /// The chunk's state
+    pub state: ChunkState,
+}
+
+/// A client chunk's state
+enum ChunkState {
+    Unmeshed,
+    Meshing,
+    Meshed(BufferHandle3D),
+}
+
+
+impl std::fmt::Debug for ChunkState {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            &ChunkState::Unmeshed => write!(f, "ChunkState::Unmeshed"),
+            &ChunkState::Meshing => write!(f, "ChunkState::Meshing"),
+            &ChunkState::Meshed(_) => write!(f, "ChunkState::Meshed(_)"),
+        }
+    }
+}
+
+
 impl InputImpl {
     pub fn new() -> Self {
         // Load config
         std::fs::create_dir_all(Path::new("cfg")).unwrap();
-        let config = load_config(Path::new("cfg/cfg.toml"));
+        let config = Arc::new(load_config(Path::new("cfg/cfg.toml")));
 
         // Window creation
         let events_loop = glutin::EventsLoop::new();
@@ -194,12 +247,13 @@ impl InputImpl {
 
             {
                 let meshing_tx = meshing_t.clone();
+                let input_tx = input_t.clone();
                 thread::spawn(move || {
                     thread::sleep(std::time::Duration::from_millis(2000));
                     client.connect("127.0.0.1:1106").expect("Failed to bind to socket.");
                     client.socket().unwrap().as_raw_udp_socket().set_recv_buffer_size(1024*1024*8).unwrap();
                     client.socket().unwrap().as_raw_udp_socket().set_send_buffer_size(1024*1024*8).unwrap();
-                    ::client::network::start(network_r, meshing_tx, client);
+                    ::client::network::start(network_r, meshing_tx, input_tx, client);
                     //client.disconnect();
                 });
                 println!("Started network thread");
@@ -208,12 +262,14 @@ impl InputImpl {
             {
                 let (game_tx, game_rx) = channel();
                 let (network_tx, network_rx) = channel();
+                let (worldgen_tx, worldgen_rx) = channel();
+                let game_t = game_tx.clone();
                 thread::spawn(move || {
                     match server.listen("0.0.0.0:1106") {
                         Ok(()) =>  {
                             server.socket().unwrap().as_raw_udp_socket().set_recv_buffer_size(1024*1024*8).unwrap();
                             server.socket().unwrap().as_raw_udp_socket().set_send_buffer_size(1024*1024*8).unwrap();
-                            ::server::network::start(network_rx, game_tx, server);
+                            ::server::network::start(network_rx, game_t, server);
                             //server.shutdown();
                         },
                         Err(e) => {
@@ -222,9 +278,13 @@ impl InputImpl {
                     }
                     //server.shutdown();
                 });
+                let config = config.clone();
+                thread::spawn(move || {
+                    ::server::game::start(game_rx, network_tx, worldgen_tx, config);
+                });
 
                 thread::spawn(move || {
-                    ::server::game::start(game_rx, network_tx);
+                    ::server::worldgen::start(worldgen_rx, game_tx);
                 });
             }
 
@@ -267,6 +327,7 @@ impl InputImpl {
             running: true,
             config,
             rx,
+            pending_messages: VecDeque::new(),
             meshing_tx,
             network_tx,
             game_state: ClientGameState {
@@ -276,6 +337,7 @@ impl InputImpl {
                 keyboard_state: KeyboardState::new(),
                 camera: cam,
                 timer: Instant::now(),
+                chunks: HashMap::new(),
             },
             rendering_state: RenderingState {
                 device,
@@ -283,7 +345,6 @@ impl InputImpl {
                 pso,
                 data,
                 encoder,
-                chunks: HashMap::new(),
             },
             debug_info: DebugInfo {
                 fc: FrameCounter::new(),
@@ -341,6 +402,9 @@ impl InputImpl {
                     WindowEvent::MouseInput { button, state, .. } => {
                         if button == MouseButton::Left && state == ElementState::Pressed {
                             println!("Player position: {:?}", self.game_state.camera.get_pos());
+                            let player_chunk = self.game_state.camera.get_pos().chunk_pos();
+                            let c = self.game_state.chunks.get(&player_chunk).unwrap().borrow();
+                            println!("Player chunk: {:?} (fragment_count: {}, adj_chunks: {}, state: {:?})", player_chunk, c.fragments, c.adj_chunks, c.state);
                         }
                     },
                     _ => {},
@@ -349,8 +413,8 @@ impl InputImpl {
                     // TODO: Ensure this event is only received if the window is focused
                     DeviceEvent::Motion { axis, value } => {
                         match axis {
-                            0 => self.game_state.camera.update_cursor(value as f32, 0.0),
-                            1 => self.game_state.camera.update_cursor(0.0, value as f32),
+                            0 => self.game_state.camera.update_cursor(value, 0.0),
+                            1 => self.game_state.camera.update_cursor(0.0, value),
                             _ => panic!("Unknown axis. Expected 0 or 1, found {}.", axis),
                         }
                     },
@@ -368,10 +432,80 @@ impl InputImpl {
                 ToInput::NewChunkBuffer(pos, vertices) => {
                     assert!(vertices.len()%3 == 0); // Triangles should have 3 vertices
                     //println!("Input: received vertex buffer @ {:?}", pos);
-                    if let Some(buffer @ &mut None) = self.rendering_state.chunks.get_mut(&pos) {
-                        *buffer = Some(self.rendering_state.factory.create_vertex_buffer_with_slice(&vertices, ()));
+                    if let Some(ref chunk) = self.game_state.chunks.get_mut(&pos) {
+                        chunk.borrow_mut().state = ChunkState::Meshed(self.rendering_state.factory.create_vertex_buffer_with_slice(&vertices, ()));
                     }
                 },
+                ToInput::SetPos(pos) => {
+                    self.game_state.camera.set_pos(pos.0);
+                },
+                message @ ToInput::NewChunkFragment(..) | message @ ToInput::NewChunkInfo(..) => {
+                    self.pending_messages.push_back(message);
+                },
+            }
+        }
+    }
+
+    pub fn process_chunk_messages(&mut self) {
+        for message in self.pending_messages.drain(..) {
+            match message {
+                ToInput::NewChunkFragment(pos, fpos, frag) => {
+                    if let Some(data) = self.game_state.chunks.get(&pos) {
+                        let mut data = &mut *data.borrow_mut();
+                        let index = fpos.0[0]*32 + fpos.0[1];
+                        // New fragment
+                        if data.chunk_info[index/32]&(1 << (index%32)) == 0 {
+                            data.chunk_info[index/32] |= 1 << (index%32);
+                            data.chunk.blocks[fpos.0[0]][fpos.0[1]] = *frag;
+                            data.fragments += 1;
+                            // TODO: check that the chunk is in render_distance but NOT in (render_distance; rander_distance+1]
+                            // Update adjacent chunks too
+                            Self::check_finalize_chunk(pos, data, &self.game_state.chunks, &self.game_registries.block_registry);
+                        }
+                    }
+                },
+                ToInput::NewChunkInfo(pos, info) => {
+                    if let Some(data) = self.game_state.chunks.get(&pos) {
+                        let mut data = &mut *data.borrow_mut();
+                        for (from, to) in info.iter().zip(data.chunk_info.iter_mut()) {
+                            data.fragments -= to.count_ones() as usize;
+                            *to |= *from;
+                            data.fragments += to.count_ones() as usize;
+                        }
+                        // Update adjacent chunks
+                        Self::check_finalize_chunk(pos, data, &self.game_state.chunks, &self.game_registries.block_registry);
+                    }
+                },
+                _ => unreachable!(),
+            }
+        }
+    }
+
+    fn check_finalize_chunk(pos: ChunkPos, data: &mut ChunkData, chunks: &HashMap<ChunkPos, RefCell<ChunkData>>, br: &BlockRegistry) {
+        if data.fragments == CHUNK_SIZE * CHUNK_SIZE {
+            for face in 0..6 {
+                let adj = ADJ_CHUNKS[face];
+                let mut pos = pos;
+                for i in 0..3 {
+                    pos.0[i] += adj[i];
+                }
+                if let Some(c) = chunks.get(&pos) {
+                    let mut adj_chunk = c.borrow_mut();
+                    if adj_chunk.adj_chunks&(1 << face) == 0 {
+                        adj_chunk.adj_chunks |= 1 << face;
+                        // We update that adjacent chunk's sides with the current chunk !
+                        Self::update_side(
+                            // It should be the opposite face from the adjacent chunk's POV, so we XOR 1 to flip the last bit
+                            face^1,
+                            &data.chunk,
+                            &mut adj_chunk.chunk.sides,
+                            br
+                        );
+                    }
+                }
+                else {
+                    println!("Warning: LOST INFORMATION. Chunk {:?} is not loaded!", pos);
+                }
             }
         }
     }
@@ -387,15 +521,35 @@ impl InputImpl {
 
     pub fn move_camera(&mut self) {
         let elapsed = self.game_state.timer.elapsed();
-        self.game_state.camera.tick(elapsed.subsec_nanos() as f32/1_000_000_000.0 +  elapsed.as_secs() as f32, &self.game_state.keyboard_state);
+        //self.game_state.camera.tick(elapsed.subsec_nanos() as f32/1_000_000_000.0 +  elapsed.as_secs() as f32, &self.game_state.keyboard_state);
         self.game_state.timer = Instant::now();
+        let &mut InputImpl {
+            ref network_tx,
+            ref mut ticker,
+            ref game_state,
+            ..
+        } = self;
 
         // Send updated position to network
-        if self.ticker.try_tick() {
-            self.network_tx.send(ToNetwork::SetPos({
+        if ticker.try_tick() {
+            /*self.network_tx.send(ToNetwork::SetPos({
                 let p = self.game_state.camera.get_pos();
                 (p.0 as f64, p.1 as f64, p.2 as f64)
-            })).unwrap();
+            })).unwrap();*/
+            let keys = {
+                let ks = &game_state.keyboard_state;
+                let mut mask = 0;
+                mask |= ((ks.is_key_pressed(MOVE_FORWARD) as u8) << 0) as u8;
+                mask |= ((ks.is_key_pressed(MOVE_LEFT) as u8) << 1) as u8;
+                mask |= ((ks.is_key_pressed(MOVE_BACKWARD) as u8) << 2) as u8;
+                mask |= ((ks.is_key_pressed(MOVE_RIGHT) as u8) << 3) as u8;
+                mask |= ((ks.is_key_pressed(MOVE_UP) as u8) << 4) as u8;
+                mask |= ((ks.is_key_pressed(MOVE_DOWN) as u8) << 5) as u8;
+                mask |= ((ks.is_key_pressed(CONTROL) as u8) << 6) as u8;
+                mask
+            };
+            let yp = game_state.camera.get_yaw_pitch();
+            network_tx.send(ToNetwork::SetInput(PlayerInput { keys, yaw: yp[0], pitch: yp[1] })).unwrap();
         }
     }
 
@@ -411,44 +565,77 @@ impl InputImpl {
     }
 
     pub fn fetch_close_chunks(&mut self) {
-        let meshing_tx = self.meshing_tx.clone();
-
-        let player_chunk = self.game_state.camera.get_pos();
-        let player_chunk = ChunkPos(
-            player_chunk.0 as i64 / CHUNK_SIZE as i64,
-            player_chunk.1 as i64 / CHUNK_SIZE as i64,
-            player_chunk.2 as i64 / CHUNK_SIZE as i64);
+        let player_chunk = self.game_state.camera.get_pos().chunk_pos();
 
         // Fetch new close chunks
-        let render_dist = self.config.render_distance;
+        // render_distance+2 because we need to store information about the adjacent chunks
+        // even if they are not yet loaded. We use +2 instead of +1 to have a small margin,
+        // just in case the packets don't arrive in the right order.
+        let render_dist = self.config.render_distance+2;
         for i in -render_dist..(render_dist+1) {
             for j in -render_dist..(render_dist+1) {
                 for k in -render_dist..(render_dist+1) {
-                    let pck = &player_chunk;
-                    let pos = ChunkPos(pck.0 + i, pck.1 + j, pck.2 + k);
-                    self.rendering_state.chunks.entry(pos.clone()).or_insert_with(|| {
-                        //println!("Input: asked for buffer @ {:?}", pos);
-                        meshing_tx.send(ToMeshing::AllowChunk(pos.clone())).unwrap();
-                        None
+                    let mut pos = ChunkPos([i, j, k]);
+                    for x in 0..3 {
+                        pos.0[x] += player_chunk.0[x];
+                    }
+                    self.game_state.chunks.entry(pos.clone()).or_insert_with(|| {
+                        RefCell::new(ChunkData {
+                            chunk: Chunk::new(),
+                            fragments: 0,
+                            adj_chunks: 0,
+                            chunk_info: [0; CHUNK_SIZE * CHUNK_SIZE / 32],
+                            state: ChunkState::Unmeshed,
+                        })
                     });
                 }
             }
         }
 
         // Trash far chunks
-        self.rendering_state.chunks.retain(|pos, _| {
-            if
-                abs(pos.0 - player_chunk.0) > render_dist ||
-                abs(pos.1 - player_chunk.1) > render_dist ||
-                abs(pos.2 - player_chunk.2) > render_dist {
-
-                meshing_tx.send(ToMeshing::RemoveChunk(pos.clone())).unwrap();
-                false
-            }
-            else {
-                true
-            }
+        let render_dist = (self.config.render_distance+2) as u64;
+        self.game_state.chunks.retain(|pos, _| {
+            pos.orthogonal_dist(player_chunk) <= render_dist
         });
+
+        // Start meshing for new chunks
+        for (pos, chunk) in self.game_state.chunks.iter() {
+            let mut c = chunk.borrow_mut();
+            // TODO: FRAGMENT_COUNT const
+            if c.adj_chunks == 0b00111111 && c.fragments == CHUNK_SIZE * CHUNK_SIZE {
+                let mut update_state = false;
+                if let ChunkState::Unmeshed = c.state {
+                    update_state = true;
+                    self.meshing_tx.send(ToMeshing::ComputeChunkMesh(*pos, c.chunk.clone())).unwrap();
+                }
+                if update_state {
+                    c.state = ChunkState::Meshing;
+                }
+            }
+        }
+    }
+
+    /// Reversed means the internal faces of the chunk
+    fn get_range(x: i64, reversed: bool) -> std::ops::Range<usize> {
+        match x {
+            0 => 0..CHUNK_SIZE,
+            1 => if reversed { (CHUNK_SIZE-1)..CHUNK_SIZE } else { 0..1 },
+            -1 => if reversed { 0..1 } else { (CHUNK_SIZE-1)..CHUNK_SIZE },
+            _ => panic!("Impossible value"),
+        }
+    }
+
+    fn update_side(face: usize, c: &Chunk, sides: &mut ChunkSidesArray, br: &BlockRegistry) {
+        let adj = ADJ_CHUNKS[face];
+        for (int_x, ext_x) in Self::get_range(adj[0], true).zip(Self::get_range(adj[0], false)) {
+            for (int_y, ext_y) in Self::get_range(adj[1], true).zip(Self::get_range(adj[1], false)) {
+                for (int_z, ext_z) in Self::get_range(adj[2], true).zip(Self::get_range(adj[2], false)) {
+                    if !br.get_block(c.blocks[ext_x][ext_y][ext_z]).is_opaque() {
+                        sides[int_x][int_y][int_z] |= 1 << face;
+                    }
+                }
+            }
+        }
     }
 
     pub fn render(&mut self) {
@@ -456,13 +643,13 @@ impl InputImpl {
 
         // The transform buffer
         let mut transform = Transform {
-            view_proj: self.game_state.camera.get_view_projection().into(),
+            view_proj: self.game_state.camera.get_view_projection().cast::<f32>().into(),
             model: [[0.0; 4]; 4],
         };
 
         // The player data buffer
         let player_data = PlayerData {
-            direction: self.game_state.camera.get_cam_dir(),
+            direction: self.game_state.camera.get_cam_dir().cast::<f32>().into(),
         };
 
         state.encoder.update_buffer(&state.data.player_data, &[player_data], 0).unwrap();
@@ -471,36 +658,24 @@ impl InputImpl {
         state.encoder.clear_depth(&state.data.out_depth, 1.0);
 
         // Render every chunk independently
-        for (pos, buffer) in state.chunks.iter_mut() {
-            match buffer {
-                &mut Some(ref mut buff) => {
-                    transform.model = cgmath::Matrix4::from_translation(
-                        (CHUNK_SIZE as f32)
-                        * cgmath::Vector3::new(pos.0 as f32, pos.1 as f32, pos.2 as f32)
-                    ).into();
-                    state.encoder.update_buffer(&state.data.transform,
-                        &[transform],
-                        0).unwrap();
-                    // Evil swap hack
-                    std::mem::swap(&mut state.data.vbuf, &mut buff.0);
-                    state.encoder.draw(&buff.1, &state.pso, &state.data);
-                    std::mem::swap(&mut state.data.vbuf, &mut buff.0);
-                }
-                &mut None => (),
+        for (pos, chunk) in self.game_state.chunks.iter_mut() {
+            if let ChunkState::Meshed(ref mut buff) = chunk.borrow_mut().state {
+                transform.model = cgmath::Matrix4::from_translation(
+                    (CHUNK_SIZE as f32)
+                    * cgmath::Vector3::new(pos.0[0] as f32, pos.0[1] as f32, pos.0[2] as f32)
+                ).into();
+                state.encoder.update_buffer(&state.data.transform,
+                    &[transform],
+                    0).unwrap();
+                // Evil swap hack
+                std::mem::swap(&mut state.data.vbuf, &mut buff.0);
+                state.encoder.draw(&buff.1, &state.pso, &state.data);
+                std::mem::swap(&mut state.data.vbuf, &mut buff.0);
             }
         }
         state.encoder.flush(&mut state.device);
 
         self.game_state.window.swap_buffers().unwrap();
         state.device.cleanup();
-    }
-}
-
-fn abs(x: i64) -> i64 {
-    if x < 0 {
-        -x
-    }
-    else {
-        x
     }
 }
