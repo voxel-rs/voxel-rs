@@ -1,8 +1,10 @@
+//! Various network-related utilities.
+//! For now this means `ChunkFragment` serialization and deserialization.
+
 use ::CHUNK_SIZE;
 use ::block::{BlockId, ChunkFragment};
 
 fn serialize_blocks(blocks: &[BlockId]) -> Vec<u8> {
-
     fn encode(out: &mut Vec<u8>, current_block: BlockId, mut count: u8) {
         if count == 0 {
             return;

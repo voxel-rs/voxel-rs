@@ -1,3 +1,6 @@
+//! The worldgen threads generates chunks.
+//! It it used to offload computation-intensive operations from the game thread.
+
 extern crate noise;
 extern crate rand;
 

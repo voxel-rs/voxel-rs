@@ -1,3 +1,5 @@
+//! Camera.
+
 extern crate cgmath;
 
 use self::cgmath::prelude::*;

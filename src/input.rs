@@ -1,3 +1,5 @@
+//! KeyboardState.
+
 use std::collections::HashMap;
 
 /// Holds the keyboard state.

@@ -1,3 +1,5 @@
+//! FrameCounter.
+
 use std::collections::LinkedList;
 use std;
 

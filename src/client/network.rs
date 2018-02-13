@@ -1,3 +1,5 @@
+//! The network thread manages client-server interaction.
+
 extern crate bincode;
 extern crate cobalt;
 

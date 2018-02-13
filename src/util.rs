@@ -1,3 +1,5 @@
+//! A few other helpers.
+
 use ::std::time::{Duration, Instant};
 
 pub struct Ticker {

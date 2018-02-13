@@ -1,3 +1,5 @@
+//! Various `Block`- and `Chunk`-related data structures.
+
 use ::texture::TextureRegistry;
 use ::{CHUNK_SIZE, Vertex};
 

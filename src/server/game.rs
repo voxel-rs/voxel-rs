@@ -1,3 +1,5 @@
+//! The game thread is the main server thread. It is authoritative over the game.
+
 extern crate cgmath;
 extern crate cobalt;
 

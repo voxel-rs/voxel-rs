@@ -1,3 +1,5 @@
+//! `Player`-related data structures.
+
 extern crate cgmath;
 
 use ::block::ChunkPos;

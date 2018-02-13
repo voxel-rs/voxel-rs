@@ -1,3 +1,5 @@
+//! Configuration.
+
 extern crate serde;
 extern crate toml;
 

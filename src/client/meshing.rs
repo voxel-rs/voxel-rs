@@ -1,3 +1,6 @@
+//! The meshing thread computes chunk meshes from `ChunkArray`s.
+//! It it used to offload computation-intensive operations from the input thread.
+
 use std::sync::mpsc::{Sender, Receiver};
 use ::core::messages::client::{ToInput, ToMeshing};
 use ::block::{BlockRegistry, Chunk};

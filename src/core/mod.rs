@@ -1,4 +1,7 @@
+//! _Core_ data types. For now it only contains the different messages.
+
 pub mod messages {
+    /// Client-to-client messages.
     pub mod client {
         use ::block::{Chunk, ChunkInfo, ChunkFragment, ChunkPos, FragmentPos};
         use ::player::{PlayerInput, PlayerPos};
@@ -20,6 +23,7 @@ pub mod messages {
         }
     }
 
+    /// Client-to-server and server-to-client messages.
     pub mod network {
         use ::block::{ChunkInfo, ChunkPos, FragmentPos};
         use ::player::{PlayerInput, PlayerPos};
@@ -38,6 +42,7 @@ pub mod messages {
         }
     }
 
+    /// Server-to-server messages.
     pub mod server {
         extern crate cobalt;
 

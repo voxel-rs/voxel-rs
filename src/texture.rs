@@ -1,3 +1,5 @@
+//! Textures-related data structures and helpers.
+
 extern crate texture_packer;
 extern crate image;
 
