@@ -25,6 +25,7 @@ pub struct PlayerInput {
 
 /// A server-side player
 pub struct Player {
+    pub prev_pos: Vector3<f64>,
     pub pos: Vector3<f64>,
     pub yaw: Deg<f64>,
     pub pitch: Deg<f64>,
@@ -35,6 +36,8 @@ pub struct Player {
 
 impl Player {
     pub fn tick(&mut self, dt: f64, config: &Config) {
+        self.prev_pos = self.pos;
+
         let mut speedup = 1.0;
         if self.keys & (1 << 6) > 0
         { speedup = config.ctrl_speedup; }
@@ -69,6 +72,10 @@ impl Player {
         self.keys = input.keys;
         self.yaw = Deg(input.yaw);
         self.pitch = Deg(input.pitch);
+    }
+
+    pub fn revert(&mut self) {
+        self.pos = self.prev_pos;
     }
 }
 

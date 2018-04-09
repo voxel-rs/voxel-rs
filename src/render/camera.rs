@@ -5,6 +5,7 @@ extern crate cgmath;
 use self::cgmath::prelude::*;
 use self::cgmath::{Deg, Euler, Matrix4, Quaternion, Vector3, perspective};
 use ::player::PlayerPos;
+use ::CAMERA_OFFSET;
 
 // TODO: Don't hardcode this
 pub const MOVE_FORWARD: u32 = 17;
@@ -27,7 +28,7 @@ pub struct Camera {
 impl Camera {
     pub fn new(win_w: u32, win_h: u32, config: &::config::Config) -> Camera {
         Camera {
-            position: Vector3::from([config.player_x, config.player_y, config.player_z]),
+            position: Vector3::from([config.player_x, config.player_y, config.player_z]) + CAMERA_OFFSET,
             yaw: Deg(0.0),
             pitch: Deg(0.0),
             win_w,
@@ -73,7 +74,7 @@ impl Camera {
     }
 
     pub fn set_pos(&mut self, new_pos: [f64; 3]) {
-        self.position = new_pos.into();
+        self.position = Vector3::from(new_pos) + CAMERA_OFFSET;
     }
 
     pub fn get_cam_dir(&self) -> Vector3<f64> {

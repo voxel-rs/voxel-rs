@@ -2,11 +2,20 @@
 extern crate gfx;
 #[macro_use]
 extern crate serde_derive;
+extern crate cgmath;
 
 // MUST BE A MULTIPLE OF 8 !
 const CHUNK_SIZE: usize = 32;
+const ICHUNK_SIZE: i64 = CHUNK_SIZE as i64;
 
 // TODO: refactor ?
+/*const PLAYER_WIDTH: f64 = 0.6;
+const PLAYER_HEIGHT: f64 = 1.8;
+const PLAYER_EYES: f64 = 1.6;*/
+const PLAYER_WIDTH: f64 = 0.0;
+const PLAYER_EYES: f64 = 0.0;
+const CAMERA_OFFSET: cgmath::Vector3<f64> = cgmath::Vector3 { x: PLAYER_WIDTH/2.0, y: PLAYER_EYES, z: PLAYER_WIDTH/2.0 };
+
 type ColorFormat = gfx::format::Srgba8;
 type DepthFormat = gfx::format::DepthStencil;
 

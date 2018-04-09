@@ -3,6 +3,7 @@
 extern crate cgmath;
 extern crate cobalt;
 
+use ::ICHUNK_SIZE;
 use ::block::{ChunkArray, ChunkPos};
 use ::config::Config;
 use ::core::messages::server::{ToGame, ToNetwork, ToWorldgen};
@@ -70,6 +71,7 @@ impl GameImpl {
             ToGame::PlayerEvent(id, ev) => match ev {
                 Ev::Connect => {
                     self.players.insert(id, Player {
+                        prev_pos: [self.config.player_x, self.config.player_y, self.config.player_z].into(),
                         pos: [self.config.player_x, self.config.player_y, self.config.player_z].into(),
                         yaw: Deg(0.0),
                         pitch: Deg(0.0),
@@ -99,7 +101,26 @@ impl GameImpl {
         let dt = dt.subsec_nanos() as f64 / 1_000_000_000.0;
 
         for (_, p) in &mut self.players {
+            // Try to move player, revert if there is a collision
             p.tick(dt, &self.config);
+            let mut allow_movement = false;
+            let pos: [f64; 3] = p.pos.into();
+            // TODO: Should pos[].floor() be used?
+            let mut pos = [pos[0] as i64, pos[1] as i64, pos[2] as i64];
+            for x in pos.iter_mut() {
+                *x = (*x % ICHUNK_SIZE + ICHUNK_SIZE) % ICHUNK_SIZE;
+            }
+            if let Some(state) = self.chunks.get_mut(&p.get_pos().chunk_pos()) {
+                if let ChunkState::Generated(ref chunk) = *state {
+                    // TODO: Use BlockRegistry!
+                    if chunk[pos[0] as usize][pos[1] as usize][pos[2] as usize].0 == 0 {
+                        allow_movement = true;
+                    }
+                }
+            }
+            if !allow_movement {
+                p.revert();
+            }
         }
     }
 
