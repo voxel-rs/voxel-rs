@@ -68,7 +68,7 @@ pub fn load_textures<F, R>(factory: &mut F) -> (gfx::handle::ShaderResourceView<
     let mut buffer = ImageBuffer::new(MAX_TEXTURE_SIZE, MAX_TEXTURE_SIZE);
     buffer.copy_from(&ImageExporter::export(&packer).unwrap(), 0, 0);
     let kind = gfx::texture::Kind::D2(MAX_TEXTURE_SIZE as u16, MAX_TEXTURE_SIZE as u16, gfx::texture::AaMode::Single);
-    let (_, view) = factory.create_texture_immutable_u8::<gfx::format::Srgba8>(kind, &[&buffer]).unwrap();
+    let (_, view) = factory.create_texture_immutable_u8::<gfx::format::Srgba8>(kind, gfx::texture::Mipmap::Provided, &[&buffer]).unwrap();
     (view, registry)
 }
 

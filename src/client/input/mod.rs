@@ -333,7 +333,7 @@ impl InputImpl {
         let encoder: gfx::Encoder<_, _> = factory.create_command_buffer().into();
 
         // TODO: Frame buffer size and window size might be different
-        let (w, h) = window.get_inner_size().unwrap();
+        let (w, h) = window.get_inner_size().unwrap().into();
         let cam = Camera::new(w, h, &config);
 
         window.set_cursor(MouseCursor::Crosshair);

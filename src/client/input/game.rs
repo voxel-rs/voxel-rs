@@ -153,13 +153,13 @@ impl InputImpl {
 
         // The transform buffer
         let mut transform = Transform {
-            view_proj: self.input_state.camera.get_view_projection().cast::<f32>().into(),
+            view_proj: self.input_state.camera.get_view_projection().cast::<f32>().unwrap().into(),
             model: [[0.0; 4]; 4],
         };
 
         // The player data buffer
         let player_data = PlayerData {
-            direction: self.input_state.camera.get_cam_dir().cast::<f32>().into(),
+            direction: self.input_state.camera.get_cam_dir().cast::<f32>().unwrap().into(),
         };
 
         state.encoder.update_buffer(&state.data.player_data, &[player_data], 0).unwrap();

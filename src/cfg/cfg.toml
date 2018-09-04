@@ -1,8 +1,0 @@
-player_x = 0.0
-player_y = -100.0
-player_z = 0.0
-mouse_speed = 0.2
-player_speed = 5.0
-ctrl_speedup = 15.0
-render_distance = 5
-tick_rate = 2500

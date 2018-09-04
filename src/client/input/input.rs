@@ -1,6 +1,6 @@
 use super::*;
-
 use super::ChunkState;
+use super::glutin::dpi::LogicalPosition;
 
 impl InputImpl {
     /// Process input events
@@ -11,14 +11,16 @@ impl InputImpl {
             use super::glutin::*;
             match event {
                 Event::WindowEvent { event, .. } => match event {
-                    WindowEvent::Closed => self.running = false,
+                    WindowEvent::CloseRequested => self.running = false,
                     WindowEvent::KeyboardInput {
                         input: glutin::KeyboardInput {
                             virtual_keycode: Some(glutin::VirtualKeyCode::Escape), ..
                         }, ..
                     } => self.running = false,
-                    WindowEvent::Resized(w, h) => {
-                        self.input_state.window.resize(w, h);
+                    WindowEvent::Resized(logical_size) => {
+                        let (w, h) = logical_size.into();
+                        // TODO: Don't hardcode DPI and track HiDpiFactorChanged
+                        self.input_state.window.resize(logical_size.to_physical(1.0));
                         // Update framebuffer sizes
                         gfx_window_glutin::update_views(&self.input_state.window, &mut self.rendering_state.data.out_color, &mut self.rendering_state.data.out_depth);
                         self.input_state.camera.resize_window(w, h);
@@ -133,8 +135,8 @@ impl InputImpl {
         // that the cursor constantly gets recentered. Also, might want to ignore mouse motion events fired
         // while the window was being loaded
         if self.input_state.focused {
-            let (w, h) = self.input_state.window.get_inner_size().unwrap();
-            self.input_state.window.set_cursor_position((w/2) as i32, (h/2) as i32).unwrap();
+            let (w, h) : (f64, f64) = self.input_state.window.get_inner_size().unwrap().into();
+            self.input_state.window.set_cursor_position(LogicalPosition::new(w/2.0, h/2.0)).unwrap();
         }
     }
 }

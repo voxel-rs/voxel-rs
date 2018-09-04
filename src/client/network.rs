@@ -79,7 +79,7 @@ impl<S, R, M> ClientImpl<S, R, M> where
                     ToNetwork::SetInput(input) => (ToServer::SetInput(input), MessageKind::Instant),
                     ToNetwork::SetRenderDistance(render_distance) => (ToServer::SetRenderDistance(render_distance), MessageKind::Reliable),
                 };
-                self.client.connection().unwrap().send(kind, bincode::serialize(&out, bincode::Infinite).unwrap());
+                self.client.connection().unwrap().send(kind, bincode::serialize(&out).unwrap());
             }
         }
     }

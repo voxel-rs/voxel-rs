@@ -84,7 +84,7 @@ impl<S, R, M> ServerImpl<S, R, M> where
                 &ToNetwork::NewChunk(id, _, _) => (true, id),
                 &ToNetwork::SetPos(id, pos) => {
                     if let Ok(connection) = self.server.connection(&id) {
-                        connection.send(MessageKind::Instant, bincode::serialize(&ToClient::SetPos(pos), bincode::Infinite).unwrap());
+                        connection.send(MessageKind::Instant, bincode::serialize(&ToClient::SetPos(pos)).unwrap());
                     }
                     (false, id)
                 }
@@ -111,7 +111,7 @@ impl<S, R, M> ServerImpl<S, R, M> where
                                     'yiter: for (cy, chunkz) in chunkyz.iter().enumerate() {
                                         for block in chunkz.iter() {
                                             if block.0 != 0 { // Only send the message if the ChunkFragment is not empty.
-                                                connection.send(MessageKind::Reliable, bincode::serialize(&ToClient::NewChunkFragment(pos.clone(), ::block::FragmentPos([cx, cy]), serialize_fragment(&chunkz)), bincode::Infinite).unwrap());
+                                                connection.send(MessageKind::Reliable, bincode::serialize(&ToClient::NewChunkFragment(pos.clone(), ::block::FragmentPos([cx, cy]), serialize_fragment(&chunkz))).unwrap());
                                                 continue 'yiter;
                                             }
                                         }
@@ -120,7 +120,7 @@ impl<S, R, M> ServerImpl<S, R, M> where
                                         info[index/32] |= 1 << index%32;
                                     }
                                 }
-                                connection.send(MessageKind::Reliable, bincode::serialize(&ToClient::NewChunkInfo(pos, info), bincode::Infinite).unwrap());
+                                connection.send(MessageKind::Reliable, bincode::serialize(&ToClient::NewChunkInfo(pos, info)).unwrap());
                             },
                             ToNetwork::SetPos(_, _) => unreachable!(),
                         }

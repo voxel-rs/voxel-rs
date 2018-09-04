@@ -10,7 +10,7 @@ use ::core::messages::server::{ToGame, ToWorldgen};
 
 use ::std::sync::mpsc::{Sender, Receiver};
 
-use self::noise::{NoiseModule, Perlin, Seedable};
+use self::noise::{NoiseFn, Perlin, Seedable};
 use self::rand::{SeedableRng, Rng};
 
 pub fn start(rx: Receiver<ToWorldgen>, game_tx: Sender<ToGame>) {
@@ -41,7 +41,12 @@ impl ChunkGenerator {
         //println!("[Server] Game: generating chunk @ {:?}", pos);
         let (cx, cy, cz) = (pos.0[0], pos.0[1], pos.0[2]);
         let mut chunk = [[[BlockId::from(0); CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE];
-        let mut rng = rand::StdRng::from_seed(&[((cx*4242424242 + cz)%1_000_000_007).abs() as usize]);
+        let seed = ((cx*4242424242 + cz)%1_000_000_007).abs();
+        let mut seed_array = [0; 32];
+        for i in 0..32 {
+            seed_array[i] = ((seed >> (i*8)) % 256) as u8;
+        }
+        let mut rng = rand::StdRng::from_seed(seed_array);
         for i in 0..CHUNK_SIZE {
             for j in 0..CHUNK_SIZE {
                 let height = (150.0*self.perlin.get([
