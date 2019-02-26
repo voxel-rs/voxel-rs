@@ -3,6 +3,7 @@ name = "voxel-rs"
 version = "0.1.0"
 # TODO: Add email
 authors = ["Technici4n"]
+edition = "2018"
 
 [profile.release]
 debug = true
@@ -14,7 +15,7 @@ glutin = "*"
 gfx_window_glutin = "*"
 image = "*"
 texture_packer = "*"
-cgmath = "*"
+nalgebra = "0.17"
 noise = "*"
 rand = "*"
 serde = "*"

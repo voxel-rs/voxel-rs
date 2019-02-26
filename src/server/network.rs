@@ -1,25 +1,23 @@
 //! The network thread manages client-server interaction.
 
-extern crate bincode;
-extern crate cobalt;
+use crate::core::messages::network::{ToClient, ToServer};
+use crate::core::messages::server::{ToGame, ToGamePlayer, ToNetwork};
+use crate::network::serialize_fragment;
+use crate::util::Ticker;
+use crate::CHUNK_SIZE;
 
-use ::CHUNK_SIZE;
-use ::core::messages::network::{ToClient, ToServer};
-use ::core::messages::server::{ToGame, ToGamePlayer, ToNetwork};
-use ::network::serialize_fragment;
-use ::util::Ticker;
+use std::collections::{HashMap, VecDeque};
+use std::sync::mpsc::{Receiver, Sender};
+use std::time::{Duration, Instant};
 
-use ::std::collections::{HashMap, VecDeque};
-use ::std::sync::mpsc::{Sender, Receiver};
-use ::std::time::{Duration, Instant};
+use cobalt::{ConnectionID, MessageKind, PacketModifier, RateLimiter, Server, ServerEvent, Socket};
 
-use self::cobalt::{ConnectionID, MessageKind, PacketModifier, Server, ServerEvent, Socket, RateLimiter};
-
-pub fn start<S, R, M>(rx: Receiver<ToNetwork>, game_tx: Sender<ToGame>, server: Server<S, R, M>) where
+pub fn start<S, R, M>(rx: Receiver<ToNetwork>, game_tx: Sender<ToGame>, server: Server<S, R, M>)
+where
     S: Socket,
     R: RateLimiter,
-    M: PacketModifier {
-
+    M: PacketModifier,
+{
     let mut implementation = ServerImpl::from_parts(rx, game_tx, server);
 
     loop {
@@ -31,11 +29,12 @@ pub fn start<S, R, M>(rx: Receiver<ToNetwork>, game_tx: Sender<ToGame>, server: 
     }
 }
 
-struct ServerImpl<S, R, M> where
+struct ServerImpl<S, R, M>
+where
     S: Socket,
     R: RateLimiter,
-    M: PacketModifier {
-
+    M: PacketModifier,
+{
     rx: Receiver<ToNetwork>,
     game_tx: Sender<ToGame>,
     server: Server<S, R, M>,
@@ -43,12 +42,17 @@ struct ServerImpl<S, R, M> where
     ticker: Ticker,
 }
 
-impl<S, R, M> ServerImpl<S, R, M> where
+impl<S, R, M> ServerImpl<S, R, M>
+where
     S: Socket,
     R: RateLimiter,
-    M: PacketModifier {
-
-    pub fn from_parts(rx: Receiver<ToNetwork>, game_tx: Sender<ToGame>, server: Server<S, R, M>) -> Self {
+    M: PacketModifier,
+{
+    pub fn from_parts(
+        rx: Receiver<ToNetwork>,
+        game_tx: Sender<ToGame>,
+        server: Server<S, R, M>,
+    ) -> Self {
         let tick_rate = server.config().send_rate as u32;
         ServerImpl {
             rx,
@@ -64,12 +68,18 @@ impl<S, R, M> ServerImpl<S, R, M> where
         while let Ok(message) = self.server.accept_receive() {
             let message = match message {
                 ServerEvent::Connection(id) => Some((id, ToGamePlayer::Connect)),
-                ServerEvent::ConnectionClosed(id, _) |
-                ServerEvent::ConnectionLost(id, _) => Some((id, ToGamePlayer::Disconnect)),
-                ServerEvent::Message(id, data) => Some((id, match bincode::deserialize(data.as_ref()).unwrap() {
-                    ToServer::SetInput(input) => ToGamePlayer::SetInput(input),
-                    ToServer::SetRenderDistance(render_distance) => ToGamePlayer::SetRenderDistance(render_distance),
-                })),
+                ServerEvent::ConnectionClosed(id, _) | ServerEvent::ConnectionLost(id, _) => {
+                    Some((id, ToGamePlayer::Disconnect))
+                }
+                ServerEvent::Message(id, data) => Some((
+                    id,
+                    match bincode::deserialize(data.as_ref()).unwrap() {
+                        ToServer::SetInput(input) => ToGamePlayer::SetInput(input),
+                        ToServer::SetRenderDistance(render_distance) => {
+                            ToGamePlayer::SetRenderDistance(render_distance)
+                        }
+                    },
+                )),
                 _ => None,
             };
             if let Some(message) = message {
@@ -84,23 +94,33 @@ impl<S, R, M> ServerImpl<S, R, M> where
                 &ToNetwork::NewChunk(id, _, _) => (true, id),
                 &ToNetwork::SetPos(id, pos) => {
                     if let Ok(connection) = self.server.connection(&id) {
-                        connection.send(MessageKind::Instant, bincode::serialize(&ToClient::SetPos(pos)).unwrap());
+                        connection.send(
+                            MessageKind::Instant,
+                            bincode::serialize(&ToClient::SetPos(pos)).unwrap(),
+                        );
                     }
                     (false, id)
                 }
             };
             if queue {
-                self.queues.entry(id).or_insert((Instant::now(), VecDeque::new())).1.push_back(message);
+                self.queues
+                    .entry(id)
+                    .or_insert((Instant::now(), VecDeque::new()))
+                    .1
+                    .push_back(message);
             }
         }
     }
 
     pub fn process_messages(&mut self) {
-        for (id, &mut(ref mut last_message, ref mut queue)) in self.queues.iter_mut() {
-            if Instant::now() - *last_message > Duration::new(0, 5_000_000) && queue.len() > 0 { // Any queued messages ?
+        for (id, &mut (ref mut last_message, ref mut queue)) in self.queues.iter_mut() {
+            if Instant::now() - *last_message > Duration::new(0, 5_000_000) && queue.len() > 0 {
+                // Any queued messages ?
                 let connection = self.server.connection(&id);
-                if let Ok(connection) = connection { // Open connection ?
-                    if !connection.congested() { // Not congested ?
+                if let Ok(connection) = connection {
+                    // Open connection ?
+                    if !connection.congested() {
+                        // Not congested ?
                         // Reply to 1 message
                         match queue.pop_front().unwrap() {
                             ToNetwork::NewChunk(_, pos, chunk) => {
@@ -110,18 +130,32 @@ impl<S, R, M> ServerImpl<S, R, M> where
                                 for (cx, chunkyz) in chunk.iter().enumerate() {
                                     'yiter: for (cy, chunkz) in chunkyz.iter().enumerate() {
                                         for block in chunkz.iter() {
-                                            if block.0 != 0 { // Only send the message if the ChunkFragment is not empty.
-                                                connection.send(MessageKind::Reliable, bincode::serialize(&ToClient::NewChunkFragment(pos.clone(), ::block::FragmentPos([cx, cy]), serialize_fragment(&chunkz))).unwrap());
+                                            if block.0 != 0 {
+                                                // Only send the message if the ChunkFragment is not empty.
+                                                connection.send(
+                                                    MessageKind::Reliable,
+                                                    bincode::serialize(
+                                                        &ToClient::NewChunkFragment(
+                                                            pos.clone(),
+                                                            crate::block::FragmentPos([cx, cy]),
+                                                            serialize_fragment(&chunkz),
+                                                        ),
+                                                    )
+                                                    .unwrap(),
+                                                );
                                                 continue 'yiter;
                                             }
                                         }
                                         // The ChunkFragment is empty
                                         let index = cx * CHUNK_SIZE + cy;
-                                        info[index/32] |= 1 << index%32;
+                                        info[index / 32] |= 1 << index % 32;
                                     }
                                 }
-                                connection.send(MessageKind::Reliable, bincode::serialize(&ToClient::NewChunkInfo(pos, info)).unwrap());
-                            },
+                                connection.send(
+                                    MessageKind::Reliable,
+                                    bincode::serialize(&ToClient::NewChunkInfo(pos, info)).unwrap(),
+                                );
+                            }
                             ToNetwork::SetPos(_, _) => unreachable!(),
                         }
                         *last_message = Instant::now();

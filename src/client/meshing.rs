@@ -1,22 +1,30 @@
 //! The meshing thread computes chunk meshes from `ChunkArray`s.
 //! It it used to offload computation-intensive operations from the input thread.
 
-use std::sync::mpsc::{Sender, Receiver};
-use ::core::messages::client::{ToInput, ToMeshing};
-use ::block::{BlockRegistry, Chunk};
-use std::sync::Arc;
-use ::{CHUNK_SIZE};
+use crate::{
+    block::{BlockRegistry, Chunk},
+    core::messages::client::{ToInput, ToMeshing},
+    CHUNK_SIZE,
+};
+use std::sync::{
+    mpsc::{Receiver, Sender},
+    Arc,
+};
 
 const ADJ_CHUNKS: [[i64; 3]; 6] = [
-    [ 0,  0, -1],
-    [ 0,  0,  1],
-    [ 1,  0,  0],
-    [-1,  0,  0],
-    [ 0,  1,  0],
-    [ 0, -1,  0],
+    [0, 0, -1],
+    [0, 0, 1],
+    [1, 0, 0],
+    [-1, 0, 0],
+    [0, 1, 0],
+    [0, -1, 0],
 ];
 
-pub fn start(rx: Receiver<ToMeshing>, input_tx: Sender<ToInput>, block_registry: Arc<BlockRegistry>) {
+pub fn start(
+    rx: Receiver<ToMeshing>,
+    input_tx: Sender<ToInput>,
+    block_registry: Arc<BlockRegistry>,
+) {
     let mut implementation = MeshingImpl::from_parts(rx, input_tx, block_registry);
 
     loop {
@@ -36,7 +44,8 @@ impl MeshingImpl {
     pub fn from_parts(
         rx: Receiver<ToMeshing>,
         input_tx: Sender<ToInput>,
-        block_registry: Arc<BlockRegistry>) -> Self {
+        block_registry: Arc<BlockRegistry>,
+    ) -> Self {
         Self {
             rx,
             input_tx,
@@ -50,8 +59,10 @@ impl MeshingImpl {
                 ToMeshing::ComputeChunkMesh(pos, mut chunk) => {
                     self.calculate_chunk_sides(&mut chunk);
                     let mesh = chunk.calculate_mesh(&self.block_registry);
-                    self.input_tx.send(ToInput::NewChunkBuffer(pos, mesh)).unwrap();
-                },
+                    self.input_tx
+                        .send(ToInput::NewChunkBuffer(pos, mesh))
+                        .unwrap();
+                }
             }
         }
     }
@@ -67,7 +78,11 @@ impl MeshingImpl {
                         let adj = ADJ_CHUNKS[side];
                         let (x, y, z) = (i + adj[0], j + adj[1], k + adj[2]);
                         if 0 <= x && x < sz && 0 <= y && y < sz && 0 <= z && z < sz {
-                            if !self.block_registry.get_block(blocks[x as usize][y as usize][z as usize]).is_opaque() {
+                            if !self
+                                .block_registry
+                                .get_block(blocks[x as usize][y as usize][z as usize])
+                                .is_opaque()
+                            {
                                 chunk.sides[i as usize][j as usize][k as usize] |= 1 << side;
                             }
                         }

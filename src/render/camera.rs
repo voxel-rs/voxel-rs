@@ -1,10 +1,8 @@
 //! Camera.
 
-extern crate cgmath;
-
-use self::cgmath::prelude::*;
-use self::cgmath::{Deg, Euler, Matrix4, Quaternion, Vector3, perspective};
-use ::player::PlayerPos;
+use crate::config::Config;
+use crate::player::PlayerPos;
+use nalgebra::{try_inverse, Matrix4, Perspective3, Vector3};
 
 // TODO: Don't hardcode this
 pub const MOVE_FORWARD: u32 = 17;
@@ -17,22 +15,25 @@ pub const CONTROL: u32 = 29;
 
 pub struct Camera {
     position: Vector3<f64>,
-    yaw: Deg<f64>,
-    pitch: Deg<f64>,
+    /// Yaw in degrees
+    yaw: f64,
+    /// Yaw in degrees
+    pitch: f64,
     win_w: u32,
     win_h: u32,
-    mouse_speed: Deg<f64>,
+    /// In degrees/pixel
+    mouse_speed: f64,
 }
 
 impl Camera {
-    pub fn new(win_w: u32, win_h: u32, config: &::config::Config) -> Camera {
+    pub fn new(win_w: u32, win_h: u32, config: &Config) -> Camera {
         Camera {
             position: Vector3::from([config.player_x, config.player_y, config.player_z]),
-            yaw: Deg(0.0),
-            pitch: Deg(0.0),
+            yaw: 0.0,
+            pitch: 0.0,
             win_w,
             win_h,
-            mouse_speed: Deg(config.mouse_speed),
+            mouse_speed: config.mouse_speed,
         }
     }
 
@@ -42,11 +43,11 @@ impl Camera {
         self.pitch += -self.mouse_speed * (dy as f64);
 
         // Ensure the pitch stays within [-90; 90]
-        if self.pitch < Deg(-90.0) {
-            self.pitch = Deg(-90.0);
+        if self.pitch < -90.0 {
+            self.pitch = -90.0;
         }
-        if self.pitch > Deg(90.0) {
-            self.pitch = Deg(90.0);
+        if self.pitch > 90.0 {
+            self.pitch = 90.0;
         }
     }
 
@@ -60,12 +61,13 @@ impl Camera {
     }
 
     pub fn get_view_projection(&self) -> Matrix4<f64> {
-        let proj = perspective(Deg(45.0), self.get_aspect_ratio(), 0.1, 400.0);
+        let proj = Perspective3::new(self.get_aspect_ratio(), (45.0f64).to_radians(), 0.1, 400.0);
 
-        let rotation = Quaternion::from(Euler { x: Deg(0.0), y: self.yaw, z: Deg(0.0) }) * Quaternion::from(Euler { x: self.pitch, y: Deg(0.0), z: Deg(0.0) });
-        let translation = Matrix4::from_translation(self.position);
+        let rotation = Matrix4::from_euler_angles(-self.pitch.to_radians(), 0.0, 0.0)
+            * Matrix4::from_euler_angles(0.0, -self.yaw.to_radians(), 0.0);
+        let translation = Matrix4::new_translation(&-self.position);
 
-        proj * (translation * Matrix4::from(rotation)).invert().unwrap()
+        proj.as_matrix() * rotation * translation
     }
 
     pub fn get_pos(&self) -> PlayerPos {
@@ -77,14 +79,14 @@ impl Camera {
     }
 
     pub fn get_cam_dir(&self) -> Vector3<f64> {
-        Vector3 {
-            x: -self.pitch.cos() * self.yaw.sin(),
-            y:  self.pitch.sin(),
-            z: -self.pitch.cos() * self.yaw.cos(),
-        }
+        Vector3::new(
+            -self.pitch.to_radians().cos() * self.yaw.to_radians().sin(),
+            self.pitch.to_radians().sin(),
+            -self.pitch.to_radians().cos() * self.yaw.to_radians().cos(),
+        )
     }
 
     pub fn get_yaw_pitch(&self) -> [f64; 2] {
-        [self.yaw.0, self.pitch.0]
+        [self.yaw, self.pitch]
     }
 }

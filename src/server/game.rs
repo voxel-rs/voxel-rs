@@ -1,24 +1,23 @@
 //! The game thread is the main server thread. It is authoritative over the game.
 
-extern crate cgmath;
-extern crate cobalt;
+use crate::block::{ChunkArray, ChunkPos};
+use crate::config::Config;
+use crate::core::messages::server::{ToGame, ToNetwork, ToWorldgen};
+use crate::player::Player;
+use crate::util::Ticker;
+use std::collections::HashMap;
+use std::sync::mpsc::{Receiver, Sender};
+use std::sync::Arc;
+use std::time::Instant;
 
-use ::block::{ChunkArray, ChunkPos};
-use ::config::Config;
-use ::core::messages::server::{ToGame, ToNetwork, ToWorldgen};
-use ::player::Player;
-use ::util::Ticker;
+use cobalt::ConnectionID;
 
-use ::std::collections::HashMap;
-use ::std::sync::Arc;
-use ::std::sync::mpsc::{Sender, Receiver};
-use ::std::time::Instant;
-
-use self::cgmath::Deg;
-use self::cobalt::ConnectionID;
-
-
-pub fn start(rx: Receiver<ToGame>, network_tx: Sender<ToNetwork>, worldgen_tx: Sender<ToWorldgen>, config: Arc<Config>) {
+pub fn start(
+    rx: Receiver<ToGame>,
+    network_tx: Sender<ToNetwork>,
+    worldgen_tx: Sender<ToWorldgen>,
+    config: Arc<Config>,
+) {
     let mut implementation = GameImpl::from_parts(rx, network_tx, worldgen_tx, config);
     loop {
         implementation.process_messages();
@@ -46,7 +45,12 @@ enum ChunkState {
 }
 
 impl GameImpl {
-    pub fn from_parts(rx: Receiver<ToGame>, network_tx: Sender<ToNetwork>, worldgen_tx: Sender<ToWorldgen>, config: Arc<Config>) -> Self {
+    pub fn from_parts(
+        rx: Receiver<ToGame>,
+        network_tx: Sender<ToNetwork>,
+        worldgen_tx: Sender<ToWorldgen>,
+        config: Arc<Config>,
+    ) -> Self {
         Self {
             config,
             rx,
@@ -65,27 +69,37 @@ impl GameImpl {
     }
 
     fn process_message(&mut self, message: ToGame) {
-        use ::core::messages::server::ToGamePlayer as Ev;
+        use crate::core::messages::server::ToGamePlayer as Ev;
         match message {
             ToGame::PlayerEvent(id, ev) => match ev {
                 Ev::Connect => {
-                    self.players.insert(id, Player {
-                        pos: [self.config.player_x, self.config.player_y, self.config.player_z].into(),
-                        yaw: Deg(0.0),
-                        pitch: Deg(0.0),
-                        render_distance: 0,
-                        chunks: HashMap::new(),
-                        keys: 0,
-                    });
-                },
+                    self.players.insert(
+                        id,
+                        Player {
+                            pos: [
+                                self.config.player_x,
+                                self.config.player_y,
+                                self.config.player_z,
+                            ]
+                            .into(),
+                            yaw: 0.0,
+                            pitch: 0.0,
+                            render_distance: 0,
+                            chunks: HashMap::new(),
+                            keys: 0,
+                        },
+                    );
+                }
                 Ev::Disconnect => {
                     self.players.remove(&id);
-                },
+                }
                 Ev::SetInput(input) => self.players.get_mut(&id).unwrap().set_input(&input),
-                Ev::SetRenderDistance(render_distance) => self.players.get_mut(&id).unwrap().render_distance = render_distance,
+                Ev::SetRenderDistance(render_distance) => {
+                    self.players.get_mut(&id).unwrap().render_distance = render_distance
+                }
             },
             ToGame::NewChunk(pos, c) => {
-                if let Some(mut state) = self.chunks.get_mut(&pos) {
+                if let Some(state) = self.chunks.get_mut(&pos) {
                     *state = ChunkState::Generated(c);
                 }
             }
@@ -119,15 +133,15 @@ impl GameImpl {
             let p = player.get_pos();
             // player_chunk
             let pc = p.chunk_pos();
-            for x in -d..(d+1) {
-                for y in -d..(d+1) {
-                    for z in -d..(d+1) {
+            for x in -d..(d + 1) {
+                for y in -d..(d + 1) {
+                    for z in -d..(d + 1) {
                         nearby.push((x, y, z));
                     }
                 }
             }
             // Sort chunks by squared distance to the player
-            nearby.sort_unstable_by_key(|&(x, y, z)| x*x + y*y + z*z);
+            nearby.sort_unstable_by_key(|&(x, y, z)| x * x + y * y + z * z);
             for (x, y, z) in nearby.drain(..) {
                 let mut pos = ChunkPos([x, y, z]);
                 for i in 0..3 {
@@ -146,24 +160,28 @@ impl GameImpl {
                     Entry::Vacant(v) => {
                         // Generate it
                         v.insert(ChunkState::Generating);
-                        self.worldgen_tx.send(ToWorldgen::GenerateChunk(pos)).unwrap();
-                    },
+                        self.worldgen_tx
+                            .send(ToWorldgen::GenerateChunk(pos))
+                            .unwrap();
+                    }
                     Entry::Occupied(o) => match *o.get() {
                         // Wait until generated
                         ChunkState::Generating => (),
                         // Send a copy of the chunk
                         ChunkState::Generated(ref c) => {
-                            network_tx.send(ToNetwork::NewChunk(*id, pos, c.clone())).unwrap();
+                            network_tx
+                                .send(ToNetwork::NewChunk(*id, pos, c.clone()))
+                                .unwrap();
                             player_entry.or_insert(());
-                        },
+                        }
                     },
                 }
             }
             // Remove chunks that are too far away
             let render_distance = player.render_distance;
-            player.chunks.retain(|pos, _| {
-                pos.orthogonal_dist(pc) <= render_distance
-            });
+            player
+                .chunks
+                .retain(|pos, _| pos.orthogonal_dist(pc) <= render_distance);
         }
 
         // Remove chunks that are far from all players
@@ -180,7 +198,9 @@ impl GameImpl {
         // Send physics updates
         if last_update.try_tick() {
             for (id, player) in players {
-                network_tx.send(ToNetwork::SetPos(*id, player.get_pos().clone())).unwrap();
+                network_tx
+                    .send(ToNetwork::SetPos(*id, player.get_pos().clone()))
+                    .unwrap();
             }
         }
     }

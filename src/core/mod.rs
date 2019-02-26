@@ -3,8 +3,9 @@
 pub mod messages {
     /// Client-to-client messages.
     pub mod client {
-        use ::block::{Chunk, ChunkInfo, ChunkFragment, ChunkPos, FragmentPos};
-        use ::player::{PlayerInput, PlayerPos};
+        use crate::block::{Chunk, ChunkFragment, ChunkInfo, ChunkPos, FragmentPos};
+        use crate::player::{PlayerInput, PlayerPos};
+        use crate::Vertex;
 
         pub enum ToNetwork {
             SetInput(PlayerInput),
@@ -12,7 +13,7 @@ pub mod messages {
         }
 
         pub enum ToInput {
-            NewChunkBuffer(ChunkPos, Vec<::Vertex>),
+            NewChunkBuffer(ChunkPos, Vec<Vertex>),
             NewChunkFragment(ChunkPos, FragmentPos, Box<ChunkFragment>),
             NewChunkInfo(ChunkPos, ChunkInfo),
             SetPos(PlayerPos),
@@ -25,8 +26,9 @@ pub mod messages {
 
     /// Client-to-server and server-to-client messages.
     pub mod network {
-        use ::block::{ChunkInfo, ChunkPos, FragmentPos};
-        use ::player::{PlayerInput, PlayerPos};
+        use crate::block::{ChunkInfo, ChunkPos, FragmentPos};
+        use crate::player::{PlayerInput, PlayerPos};
+        use serde_derive::{Deserialize, Serialize};
 
         #[derive(Serialize, Deserialize)]
         pub enum ToClient {
@@ -44,13 +46,10 @@ pub mod messages {
 
     /// Server-to-server messages.
     pub mod server {
-        extern crate cobalt;
+        use crate::block::{ChunkArray, ChunkPos};
+        use crate::player::{PlayerInput, PlayerPos};
 
-        use ::block::{ChunkArray, ChunkPos};
-        use ::player::{PlayerInput, PlayerPos};
-
-        use self::cobalt::ConnectionID;
-
+        use cobalt::ConnectionID;
 
         pub enum ToNetwork {
             NewChunk(ConnectionID, ChunkPos, Box<ChunkArray>),

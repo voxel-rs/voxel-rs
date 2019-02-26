@@ -1,11 +1,8 @@
 //! Textures-related data structures and helpers.
 
-extern crate texture_packer;
-extern crate image;
-
 use gfx;
 use std::collections::HashMap;
-use self::texture_packer::TexturePackerConfig;
+use texture_packer::TexturePackerConfig;
 
 /// List of loaded textures and their position in the atlas.
 pub struct TextureRegistry {
@@ -31,14 +28,21 @@ const TEXTURE_PACKER_CONFIG: TexturePackerConfig = TexturePackerConfig {
     texture_outlines: false,
 };
 
-pub fn load_textures<F, R>(factory: &mut F) -> (gfx::handle::ShaderResourceView<R, [f32; 4]>, TextureRegistry)
-    where F: gfx::Factory<R>, R: gfx::Resources
+pub fn load_textures<F, R>(
+    factory: &mut F,
+) -> (
+    gfx::handle::ShaderResourceView<R, [f32; 4]>,
+    TextureRegistry,
+)
+where
+    F: gfx::Factory<R>,
+    R: gfx::Resources,
 {
-    use self::image::{ImageBuffer, GenericImage};
-    use self::texture_packer::TexturePacker;
-    use self::texture_packer::importer::ImageImporter;
-    use self::texture_packer::exporter::ImageExporter;
+    use image::{GenericImage, ImageBuffer};
     use std::path::Path;
+    use texture_packer::exporter::ImageExporter;
+    use texture_packer::importer::ImageImporter;
+    use texture_packer::TexturePacker;
 
     let mut packer = TexturePacker::new_skyline(TEXTURE_PACKER_CONFIG);
     let mut registry = TextureRegistry::new();
@@ -50,25 +54,41 @@ pub fn load_textures<F, R>(factory: &mut F) -> (gfx::handle::ShaderResourceView<
         "wood_top",
         "leaves",
         "stone",
-        "ore_coal"
+        "ore_coal",
     ];
     for &tex in &textures {
         let path = format!("assets/{}.png", tex);
-        packer.pack_own(String::from(tex), ImageImporter::import_from_file(&Path::new(&path)).unwrap());
+        packer.pack_own(
+            String::from(tex),
+            ImageImporter::import_from_file(&Path::new(&path)).unwrap(),
+        );
     }
     for (name, frame) in packer.get_frames() {
         let frame = frame.frame;
-        registry.add_texture(name, TextureRect {
-            x: (frame.x as f32)/MAX_TEXTURE_SIZE_F,
-            y: (frame.y as f32)/MAX_TEXTURE_SIZE_F,
-            w: (frame.w as f32)/MAX_TEXTURE_SIZE_F,
-            h: (frame.h as f32)/MAX_TEXTURE_SIZE_F,
-        });
+        registry.add_texture(
+            name,
+            TextureRect {
+                x: (frame.x as f32) / MAX_TEXTURE_SIZE_F,
+                y: (frame.y as f32) / MAX_TEXTURE_SIZE_F,
+                w: (frame.w as f32) / MAX_TEXTURE_SIZE_F,
+                h: (frame.h as f32) / MAX_TEXTURE_SIZE_F,
+            },
+        );
     }
     let mut buffer = ImageBuffer::new(MAX_TEXTURE_SIZE, MAX_TEXTURE_SIZE);
     buffer.copy_from(&ImageExporter::export(&packer).unwrap(), 0, 0);
-    let kind = gfx::texture::Kind::D2(MAX_TEXTURE_SIZE as u16, MAX_TEXTURE_SIZE as u16, gfx::texture::AaMode::Single);
-    let (_, view) = factory.create_texture_immutable_u8::<gfx::format::Srgba8>(kind, gfx::texture::Mipmap::Provided, &[&buffer]).unwrap();
+    let kind = gfx::texture::Kind::D2(
+        MAX_TEXTURE_SIZE as u16,
+        MAX_TEXTURE_SIZE as u16,
+        gfx::texture::AaMode::Single,
+    );
+    let (_, view) = factory
+        .create_texture_immutable_u8::<gfx::format::Srgba8>(
+            kind,
+            gfx::texture::Mipmap::Provided,
+            &[&buffer],
+        )
+        .unwrap();
     (view, registry)
 }
 

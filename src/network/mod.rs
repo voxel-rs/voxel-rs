@@ -1,8 +1,8 @@
 //! Various network-related utilities.
 //! For now this means `ChunkFragment` serialization and deserialization.
 
-use ::CHUNK_SIZE;
-use ::block::{BlockId, ChunkFragment};
+use crate::block::{BlockId, ChunkFragment};
+use crate::CHUNK_SIZE;
 
 fn serialize_blocks(blocks: &[BlockId]) -> Vec<u8> {
     fn encode(out: &mut Vec<u8>, current_block: BlockId, mut count: u8) {
@@ -20,7 +20,7 @@ fn serialize_blocks(blocks: &[BlockId]) -> Vec<u8> {
     }
 
     // Preallocate
-    let mut out = Vec::with_capacity(blocks.len()*2);
+    let mut out = Vec::with_capacity(blocks.len() * 2);
     if blocks.len() == 0 {
         return out;
     }
@@ -29,8 +29,7 @@ fn serialize_blocks(blocks: &[BlockId]) -> Vec<u8> {
     for &id in blocks.split_at(0).1.iter() {
         if id == current_block && count < 255 {
             count += 1;
-        }
-        else {
+        } else {
             encode(&mut out, current_block, count);
             current_block = id;
             count = 1;

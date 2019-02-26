@@ -1,7 +1,7 @@
 //! FrameCounter.
 
-use std::collections::LinkedList;
 use std;
+use std::collections::LinkedList;
 
 pub struct FrameCounter {
     frames: LinkedList<f64>,

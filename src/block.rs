@@ -1,7 +1,8 @@
 //! Various `Block`- and `Chunk`-related data structures.
 
-use ::texture::TextureRegistry;
-use ::{CHUNK_SIZE, Vertex};
+use crate::texture::TextureRegistry;
+use crate::{Vertex, CHUNK_SIZE};
+use serde_derive::{Deserialize, Serialize};
 
 /// Block representation
 pub trait Block {
@@ -51,9 +52,7 @@ pub struct BlockCube {
 pub struct BlockAir {}
 impl BlockRegistry {
     pub fn new() -> BlockRegistry {
-        BlockRegistry {
-            blocks: Vec::new(),
-        }
+        BlockRegistry { blocks: Vec::new() }
     }
 
     pub fn add_block(&mut self, block: BlockRef) -> BlockId {
@@ -81,7 +80,11 @@ impl Chunk {
                 for k in 0..CHUNK_SIZE {
                     // Don't render hidden blocks
                     if self.sides[i][j][k] != 0xFF {
-                        blocks.get_block(self.blocks[i][j][k]).render(&mut vec, self.sides[i][j][k], [i as u64, j as u64, k as u64]);
+                        blocks.get_block(self.blocks[i][j][k]).render(
+                            &mut vec,
+                            self.sides[i][j][k],
+                            [i as u64, j as u64, k as u64],
+                        );
                     }
                 }
             }
@@ -109,7 +112,7 @@ impl From<u16> for BlockId {
 impl Block for BlockCube {
     fn render(&self, vertices: &mut Vec<Vertex>, adj: u8, delta: [u64; 3]) {
         for face in 0..6 {
-            if adj&(1 << face) > 0 {
+            if adj & (1 << face) > 0 {
                 let side = &FACES[face as usize];
                 for &pos in &FACE_ORDER {
                     let mut coords = VERTICES[side[pos]];
@@ -143,9 +146,7 @@ pub fn create_block_cube(texture_names: [&str; 6], textures: &TextureRegistry) -
             uvs[i][j][1] = y;
         }
     }
-    BlockCube {
-        uvs,
-    }
+    BlockCube { uvs }
 }
 
 /// Create an air block
@@ -154,9 +155,7 @@ pub fn create_block_air() -> BlockAir {
 }
 
 impl Block for BlockAir {
-    fn render(&self, _: &mut Vec<Vertex>, _: u8, _: [u64; 3]) {
-
-    }
+    fn render(&self, _: &mut Vec<Vertex>, _: u8, _: [u64; 3]) {}
 
     fn is_opaque(&self) -> bool {
         false
@@ -192,22 +191,15 @@ const VERTICES: [[f32; 3]; 8] = [
     [0., 1., 1.],
 ];
 
-const UVS: [[f32; 2]; 4] = [
-    [0., 0.],
-    [1., 0.],
-    [1., 1.],
-    [0., 1.],
-];
+const UVS: [[f32; 2]; 4] = [[0., 0.], [1., 0.], [1., 1.], [0., 1.]];
 
-const FACE_ORDER: [usize; 6] = [
-    0, 3, 1, 1, 3, 2,
-];
+const FACE_ORDER: [usize; 6] = [0, 3, 1, 1, 3, 2];
 
 const NORMALS: [[f32; 3]; 6] = [
-    [ 0.,  0., -1.],
-    [ 0.,  0.,  1.],
-    [ 1.,  0.,  0.],
-    [-1.,  0.,  0.],
-    [ 0.,  1.,  0.],
-    [ 0., -1.,  0.],
+    [0., 0., -1.],
+    [0., 0., 1.],
+    [1., 0., 0.],
+    [-1., 0., 0.],
+    [0., 1., 0.],
+    [0., -1., 0.],
 ];

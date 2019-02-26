@@ -1,6 +1,6 @@
-use super::*;
 use super::ChunkState;
-use super::glutin::dpi::LogicalPosition;
+use super::*;
+use glutin::dpi::LogicalPosition;
 
 impl InputImpl {
     /// Process input events
@@ -8,7 +8,7 @@ impl InputImpl {
         let mut events_loop = glutin::EventsLoop::new();
         ::std::mem::swap(&mut events_loop, &mut self.input_state.events_loop);
         events_loop.poll_events(|event| {
-            use super::glutin::*;
+            use glutin::*;
             match event {
                 Event::WindowEvent { event, .. } => match event {
                     WindowEvent::CloseRequested => self.running = false,
@@ -75,18 +75,22 @@ impl InputImpl {
         while let Ok(message) = self.rx.try_recv() {
             match message {
                 ToInput::NewChunkBuffer(pos, vertices) => {
-                    assert!(vertices.len()%3 == 0); // Triangles should have 3 vertices
-                    //println!("Input: received vertex buffer @ {:?}", pos);
+                    assert!(vertices.len() % 3 == 0); // Triangles should have 3 vertices
+                                                      //println!("Input: received vertex buffer @ {:?}", pos);
                     if let Some(ref chunk) = self.game_state.chunks.get_mut(&pos) {
-                        chunk.borrow_mut().state = ChunkState::Meshed(self.rendering_state.factory.create_vertex_buffer_with_slice(&vertices, ()));
+                        chunk.borrow_mut().state = ChunkState::Meshed(
+                            self.rendering_state
+                                .factory
+                                .create_vertex_buffer_with_slice(&vertices, ()),
+                        );
                     }
-                },
+                }
                 ToInput::SetPos(pos) => {
                     self.input_state.camera.set_pos(pos.0);
-                },
+                }
                 message @ ToInput::NewChunkFragment(..) | message @ ToInput::NewChunkInfo(..) => {
                     self.pending_messages.push_back(message);
-                },
+                }
             }
         }
     }
@@ -125,7 +129,13 @@ impl InputImpl {
                 mask
             };
             let yp = input_state.camera.get_yaw_pitch();
-            network_tx.send(ToNetwork::SetInput(PlayerInput { keys, yaw: yp[0], pitch: yp[1] })).unwrap();
+            network_tx
+                .send(ToNetwork::SetInput(PlayerInput {
+                    keys,
+                    yaw: yp[0],
+                    pitch: yp[1],
+                }))
+                .unwrap();
         }
     }
 
@@ -135,8 +145,11 @@ impl InputImpl {
         // that the cursor constantly gets recentered. Also, might want to ignore mouse motion events fired
         // while the window was being loaded
         if self.input_state.focused {
-            let (w, h) : (f64, f64) = self.input_state.window.get_inner_size().unwrap().into();
-            self.input_state.window.set_cursor_position(LogicalPosition::new(w/2.0, h/2.0)).unwrap();
+            let (w, h): (f64, f64) = self.input_state.window.get_inner_size().unwrap().into();
+            self.input_state
+                .window
+                .set_cursor_position(LogicalPosition::new(w / 2.0, h / 2.0))
+                .unwrap();
         }
     }
 }

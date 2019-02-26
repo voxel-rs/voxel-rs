@@ -27,8 +27,7 @@ impl Ticker {
         if elapsed_time >= self.tick_duration {
             self.last_tick = current_time;
             true
-        }
-        else {
+        } else {
             false
         }
     }

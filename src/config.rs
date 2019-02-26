@@ -1,11 +1,9 @@
 //! Configuration.
 
-extern crate serde;
-extern crate toml;
-
-use std::path::Path;
+use serde_derive::{Deserialize, Serialize};
 use std::fs::OpenOptions;
 use std::io::{Read, Write};
+use std::path::Path;
 
 /// Temporary way to configure the engine
 #[derive(Serialize, Deserialize, Debug)]
@@ -62,10 +60,11 @@ fn default_tick_rate() -> u64 {
 
 pub fn load_config(path: &Path) -> Config {
     let mut config_file = OpenOptions::new()
-                            .read(true)
-                            .write(true)
-                            .create(true)
-                            .open(path).unwrap();
+        .read(true)
+        .write(true)
+        .create(true)
+        .open(path)
+        .unwrap();
     // Read file
     let mut buf = "".to_owned();
     config_file.read_to_string(&mut buf).unwrap();
@@ -74,9 +73,12 @@ pub fn load_config(path: &Path) -> Config {
 
     // Write file
     let mut config_file = OpenOptions::new()
-                            .write(true)
-                            .truncate(true)
-                            .open(path).unwrap();
-    config_file.write_all(toml::to_string(&config).unwrap().as_bytes()).unwrap();
+        .write(true)
+        .truncate(true)
+        .open(path)
+        .unwrap();
+    config_file
+        .write_all(toml::to_string(&config).unwrap().as_bytes())
+        .unwrap();
     config
 }

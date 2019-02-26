@@ -4,42 +4,34 @@
 //! The `game` submodule is reponsible for chunk handling, rendering and meshing.
 //! The `input` submodule manages interactions between the player, this thread, and the other client side threads.
 
-extern crate cobalt;
-extern crate gfx;
-extern crate gfx_device_gl;
-extern crate glutin;
-extern crate gfx_window_glutin;
-extern crate image;
-extern crate cgmath;
-extern crate net2;
-
 use std;
-use std::sync::mpsc::{channel, Sender, Receiver};
-use std::sync::Arc;
-use std::thread;
+use std::cell::RefCell;
 use std::collections::{HashMap, VecDeque};
 use std::path::Path;
+use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::Arc;
+use std::thread;
 use std::time::Instant;
-use std::cell::RefCell;
 
+use gfx::texture::{FilterMethod, SamplerInfo, WrapMode};
 use gfx::traits::FactoryExt;
 use gfx::Factory;
-use gfx::texture::{SamplerInfo, FilterMethod, WrapMode};
-use self::glutin::MouseCursor;
-use self::net2::UdpSocketExt;
+use glutin::MouseCursor;
+use net2::UdpSocketExt;
 
-use ::{CHUNK_SIZE, ColorFormat, DepthFormat, pipe, PlayerData, Vertex, Transform};
-use ::core::messages::client::{ToInput, ToMeshing, ToNetwork};
-use ::texture::{load_textures};
-use ::block::{BlockRegistry, Chunk, ChunkInfo, ChunkPos, ChunkSidesArray, create_block_air, create_block_cube};
-use ::input::KeyboardState;
-use ::render::frames::FrameCounter;
-// TODO: Don't use "*"
-use ::render::camera::*;
-use ::config::{Config, load_config};
-use ::texture::TextureRegistry;
-use ::util::Ticker;
-use ::player::PlayerInput;
+use crate::block::{
+    create_block_air, create_block_cube, BlockRegistry, Chunk, ChunkInfo, ChunkPos, ChunkSidesArray,
+};
+use crate::config::{load_config, Config};
+use crate::core::messages::client::{ToInput, ToMeshing, ToNetwork};
+use crate::input::KeyboardState;
+use crate::player::PlayerInput;
+use crate::render::camera::*;
+use crate::render::frames::FrameCounter;
+use crate::texture::load_textures;
+use crate::texture::TextureRegistry;
+use crate::util::Ticker;
+use crate::{pipe, ColorFormat, DepthFormat, PlayerData, Transform, Vertex, CHUNK_SIZE};
 
 mod game;
 mod input;
@@ -51,12 +43,12 @@ type EncoderType = gfx::Encoder<gfx_device_gl::Resources, gfx_device_gl::Command
 const CLEAR_COLOR: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 
 const ADJ_CHUNKS: [[i64; 3]; 6] = [
-    [ 0,  0, -1],
-    [ 0,  0,  1],
-    [ 1,  0,  0],
-    [-1,  0,  0],
-    [ 0,  1,  0],
-    [ 0, -1,  0],
+    [0, 0, -1],
+    [0, 0, 1],
+    [1, 0, 0],
+    [-1, 0, 0],
+    [0, 1, 0],
+    [0, -1, 0],
 ];
 
 pub fn start() {
@@ -143,7 +135,10 @@ struct DebugInfo {
     pub cnt: u32,
 }
 
-type BufferHandle3D = (gfx::handle::Buffer<gfx_device_gl::Resources, Vertex>, gfx::Slice<gfx_device_gl::Resources>);
+type BufferHandle3D = (
+    gfx::handle::Buffer<gfx_device_gl::Resources, Vertex>,
+    gfx::Slice<gfx_device_gl::Resources>,
+);
 
 /// Chunk information stored by the client
 struct ChunkData {
@@ -167,7 +162,6 @@ enum ChunkState {
     Meshed(BufferHandle3D),
 }
 
-
 impl std::fmt::Debug for ChunkState {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
@@ -178,7 +172,6 @@ impl std::fmt::Debug for ChunkState {
     }
 }
 
-
 impl InputImpl {
     /// Start the client and the server (i.e. the whole game)
     pub fn new() -> Self {
@@ -188,35 +181,60 @@ impl InputImpl {
 
         // Window creation
         let events_loop = glutin::EventsLoop::new();
-        let builder = glutin::WindowBuilder::new()
-            .with_title("voxel-rs".to_string());
+        let builder = glutin::WindowBuilder::new().with_title("voxel-rs".to_string());
         let context = glutin::ContextBuilder::new()
             .with_vsync(false)
             .with_gl(glutin::GlRequest::Specific(glutin::Api::OpenGl, (3, 3)));
         let (window, device, mut factory, main_color, main_depth) =
-            gfx_window_glutin::init::<ColorFormat, DepthFormat>(builder, context, &events_loop);
+            gfx_window_glutin::init::<ColorFormat, DepthFormat>(builder, context, &events_loop)
+                .unwrap();
 
-        let shader_set = factory.create_shader_set(
-            include_bytes!("../../shader/vertex_150.glslv"),
-            include_bytes!("../../shader/vertex_150.glslf")
-        ).unwrap();
+        let shader_set = factory
+            .create_shader_set(
+                include_bytes!("../../shader/vertex_150.glslv"),
+                include_bytes!("../../shader/vertex_150.glslf"),
+            )
+            .unwrap();
 
-        let pso = factory.create_pipeline_state(
-            &shader_set,
-            self::gfx::Primitive::TriangleList,
-            self::gfx::state::Rasterizer::new_fill().with_cull_back(),
-            pipe::new()
-        ).unwrap();
+        let pso = factory
+            .create_pipeline_state(
+                &shader_set,
+                gfx::Primitive::TriangleList,
+                gfx::state::Rasterizer::new_fill().with_cull_back(),
+                pipe::new(),
+            )
+            .unwrap();
 
         // Sampler
-        let sampler = factory.create_sampler(SamplerInfo::new(FilterMethod::Scale, WrapMode::Clamp));
+        let sampler =
+            factory.create_sampler(SamplerInfo::new(FilterMethod::Scale, WrapMode::Clamp));
 
         // Blocks
         let (atlas, texture_registry) = load_textures(&mut factory);
         let air = create_block_air();
         let dirt = create_block_cube(["dirt"; 6], &texture_registry);
-        let grass = create_block_cube(["grass_side", "grass_side", "grass_side", "grass_side", "grass_top", "dirt"], &texture_registry);
-        let wood = create_block_cube(["wood_side", "wood_side", "wood_side", "wood_side", "wood_top", "wood_top"], &texture_registry);
+        let grass = create_block_cube(
+            [
+                "grass_side",
+                "grass_side",
+                "grass_side",
+                "grass_side",
+                "grass_top",
+                "dirt",
+            ],
+            &texture_registry,
+        );
+        let wood = create_block_cube(
+            [
+                "wood_side",
+                "wood_side",
+                "wood_side",
+                "wood_side",
+                "wood_top",
+                "wood_top",
+            ],
+            &texture_registry,
+        );
         let leaves = create_block_cube(["leaves"; 6], &texture_registry);
         let stone = create_block_cube(["stone"; 6], &texture_registry);
         let coal = create_block_cube(["ore_coal"; 6], &texture_registry);
@@ -238,7 +256,9 @@ impl InputImpl {
         let network_tx;
         // Start threads
         {
-            use self::cobalt::{BinaryRateLimiter, Client, Config, NoopPacketModifier, Server, UdpSocket};
+            use cobalt::{
+                BinaryRateLimiter, Client, Config, NoopPacketModifier, Server, UdpSocket,
+            };
             // Input
             let (input_t, input_r) = channel();
             // Meshing
@@ -260,7 +280,7 @@ impl InputImpl {
                 let input_tx = input_t.clone();
                 let br2 = br.clone();
                 thread::spawn(move || {
-                    ::client::meshing::start(meshing_r, input_tx, br2);
+                    crate::client::meshing::start(meshing_r, input_tx, br2);
                 });
                 println!("Started meshing thread");
             }
@@ -269,10 +289,22 @@ impl InputImpl {
                 let input_tx = input_t.clone();
                 thread::spawn(move || {
                     thread::sleep(std::time::Duration::from_millis(2000));
-                    client.connect("127.0.0.1:1106").expect("Failed to bind to socket.");
-                    client.socket().unwrap().as_raw_udp_socket().set_recv_buffer_size(1024*1024*8).unwrap();
-                    client.socket().unwrap().as_raw_udp_socket().set_send_buffer_size(1024*1024*8).unwrap();
-                    ::client::network::start(network_r, input_tx, client);
+                    client
+                        .connect("127.0.0.1:1106")
+                        .expect("Failed to bind to socket.");
+                    client
+                        .socket()
+                        .unwrap()
+                        .as_raw_udp_socket()
+                        .set_recv_buffer_size(1024 * 1024 * 8)
+                        .unwrap();
+                    client
+                        .socket()
+                        .unwrap()
+                        .as_raw_udp_socket()
+                        .set_send_buffer_size(1024 * 1024 * 8)
+                        .unwrap();
+                    crate::client::network::start(network_r, input_tx, client);
                     //client.disconnect();
                 });
                 println!("Started network thread");
@@ -285,12 +317,22 @@ impl InputImpl {
                 let game_t = game_tx.clone();
                 thread::spawn(move || {
                     match server.listen("0.0.0.0:1106") {
-                        Ok(()) =>  {
-                            server.socket().unwrap().as_raw_udp_socket().set_recv_buffer_size(1024*1024*8).unwrap();
-                            server.socket().unwrap().as_raw_udp_socket().set_send_buffer_size(1024*1024*8).unwrap();
-                            ::server::network::start(network_rx, game_t, server);
+                        Ok(()) => {
+                            server
+                                .socket()
+                                .unwrap()
+                                .as_raw_udp_socket()
+                                .set_recv_buffer_size(1024 * 1024 * 8)
+                                .unwrap();
+                            server
+                                .socket()
+                                .unwrap()
+                                .as_raw_udp_socket()
+                                .set_send_buffer_size(1024 * 1024 * 8)
+                                .unwrap();
+                            crate::server::network::start(network_rx, game_t, server);
                             //server.shutdown();
-                        },
+                        }
                         Err(e) => {
                             println!("Failed to bind to socket. Error : {:?}", e);
                         }
@@ -299,11 +341,11 @@ impl InputImpl {
                 });
                 let config = config.clone();
                 thread::spawn(move || {
-                    ::server::game::start(game_rx, network_tx, worldgen_tx, config);
+                    crate::server::game::start(game_rx, network_tx, worldgen_tx, config);
                 });
 
                 thread::spawn(move || {
-                    ::server::worldgen::start(worldgen_rx, game_tx);
+                    crate::server::worldgen::start(worldgen_rx, game_tx);
                 });
             }
 
@@ -339,7 +381,9 @@ impl InputImpl {
         window.set_cursor(MouseCursor::Crosshair);
 
         // Send render distance
-        network_tx.send(ToNetwork::SetRenderDistance(config.render_distance as u64)).unwrap();
+        network_tx
+            .send(ToNetwork::SetRenderDistance(config.render_distance as u64))
+            .unwrap();
 
         // Create object
         Self {
