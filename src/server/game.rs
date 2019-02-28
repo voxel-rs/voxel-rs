@@ -3,14 +3,13 @@
 use crate::block::{ChunkArray, ChunkPos};
 use crate::config::Config;
 use crate::core::messages::server::{ToGame, ToNetwork, ToWorldgen};
+use crate::network::ConnectionId;
 use crate::player::Player;
 use crate::util::Ticker;
 use std::collections::HashMap;
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::Arc;
 use std::time::Instant;
-
-use cobalt::ConnectionID;
 
 pub fn start(
     rx: Receiver<ToGame>,
@@ -34,7 +33,7 @@ struct GameImpl {
     network_tx: Sender<ToNetwork>,
     worldgen_tx: Sender<ToWorldgen>,
     chunks: HashMap<ChunkPos, ChunkState>,
-    players: HashMap<ConnectionID, Player>,
+    players: HashMap<ConnectionId, Player>,
     last_tick: Instant,
     last_update: Ticker,
 }

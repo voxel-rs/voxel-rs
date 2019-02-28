@@ -1,7 +1,6 @@
 use super::*;
 
 use gfx::Device;
-use glutin::GlContext;
 use nalgebra::{convert, Matrix4, Vector3};
 
 impl InputImpl {

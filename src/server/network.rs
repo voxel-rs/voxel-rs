@@ -2,75 +2,54 @@
 
 use crate::core::messages::network::{ToClient, ToServer};
 use crate::core::messages::server::{ToGame, ToGamePlayer, ToNetwork};
-use crate::network::serialize_fragment;
-use crate::util::Ticker;
+use crate::network::{serialize_fragment, ConnectionId, Server};
 use crate::CHUNK_SIZE;
 
 use std::collections::{HashMap, VecDeque};
 use std::sync::mpsc::{Receiver, Sender};
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
-use cobalt::{ConnectionID, MessageKind, PacketModifier, RateLimiter, Server, ServerEvent, Socket};
-
-pub fn start<S, R, M>(rx: Receiver<ToNetwork>, game_tx: Sender<ToGame>, server: Server<S, R, M>)
-where
-    S: Socket,
-    R: RateLimiter,
-    M: PacketModifier,
-{
+pub fn start(rx: Receiver<ToNetwork>, game_tx: Sender<ToGame>, server: impl Server) {
     let mut implementation = ServerImpl::from_parts(rx, game_tx, server);
 
     loop {
         implementation.receive_messages();
 
         implementation.process_messages();
-
-        implementation.try_tick();
     }
 }
 
-struct ServerImpl<S, R, M>
+struct ServerImpl<S>
 where
-    S: Socket,
-    R: RateLimiter,
-    M: PacketModifier,
+    S: Server,
 {
     rx: Receiver<ToNetwork>,
     game_tx: Sender<ToGame>,
-    server: Server<S, R, M>,
-    queues: HashMap<ConnectionID, (Instant, VecDeque<ToNetwork>)>,
-    ticker: Ticker,
+    server: S,
+    // TODO: either use this Instant or remove it
+    queues: HashMap<ConnectionId, (Instant, VecDeque<ToNetwork>)>,
 }
 
-impl<S, R, M> ServerImpl<S, R, M>
+impl<S> ServerImpl<S>
 where
-    S: Socket,
-    R: RateLimiter,
-    M: PacketModifier,
+    S: Server,
 {
-    pub fn from_parts(
-        rx: Receiver<ToNetwork>,
-        game_tx: Sender<ToGame>,
-        server: Server<S, R, M>,
-    ) -> Self {
-        let tick_rate = server.config().send_rate as u32;
+    pub fn from_parts(rx: Receiver<ToNetwork>, game_tx: Sender<ToGame>, server: S) -> Self {
         ServerImpl {
             rx,
             game_tx,
             server,
             queues: HashMap::new(),
-            ticker: Ticker::from_tick_rate(tick_rate),
         }
     }
 
     pub fn receive_messages(&mut self) {
+        use crate::network::ServerEvent;
         // Network messages
-        while let Ok(message) = self.server.accept_receive() {
+        while let Some(message) = self.server.next_event() {
             let message = match message {
                 ServerEvent::Connection(id) => Some((id, ToGamePlayer::Connect)),
-                ServerEvent::ConnectionClosed(id, _) | ServerEvent::ConnectionLost(id, _) => {
-                    Some((id, ToGamePlayer::Disconnect))
-                }
+                ServerEvent::ConnectionClosed(id) => Some((id, ToGamePlayer::Disconnect)),
                 ServerEvent::Message(id, data) => Some((
                     id,
                     match bincode::deserialize(data.as_ref()).unwrap() {
@@ -80,7 +59,6 @@ where
                         }
                     },
                 )),
-                _ => None,
             };
             if let Some(message) = message {
                 let message = ToGame::PlayerEvent(message.0, message.1);
@@ -91,14 +69,14 @@ where
         // Internal messages
         while let Ok(message) = self.rx.try_recv() {
             let (queue, id) = match &message {
-                &ToNetwork::NewChunk(id, _, _) => (true, id),
+                &ToNetwork::NewChunk(id, _, _) => {
+                    // Enqueue large message for later
+                    (true, id)
+                }
                 &ToNetwork::SetPos(id, pos) => {
-                    if let Ok(connection) = self.server.connection(&id) {
-                        connection.send(
-                            MessageKind::Instant,
-                            bincode::serialize(&ToClient::SetPos(pos)).unwrap(),
-                        );
-                    }
+                    // Instantly send the message because it is very important
+                    self.server
+                        .send_message(id, bincode::serialize(&ToClient::SetPos(pos)).unwrap());
                     (false, id)
                 }
             };
@@ -113,68 +91,46 @@ where
     }
 
     pub fn process_messages(&mut self) {
-        for (id, &mut (ref mut last_message, ref mut queue)) in self.queues.iter_mut() {
-            if Instant::now() - *last_message > Duration::new(0, 5_000_000) && queue.len() > 0 {
-                // Any queued messages ?
-                let connection = self.server.connection(&id);
-                if let Ok(connection) = connection {
-                    // Open connection ?
-                    if !connection.congested() {
-                        // Not congested ?
-                        // Reply to 1 message
-                        match queue.pop_front().unwrap() {
-                            ToNetwork::NewChunk(_, pos, chunk) => {
-                                //println!("[Server] Network: processing chunk @ {:?}", pos);
+        for (id, &mut (ref mut _last_message, ref mut queue)) in self.queues.iter_mut() {
+            // Any queued messages ?
+            if queue.len() > 0 {
+                // Reply to 1 message
+                match queue.pop_front().unwrap() {
+                    ToNetwork::NewChunk(_, pos, chunk) => {
+                        //println!("[Server] Network: processing chunk @ {:?}", pos);
 
-                                let mut info = [0; CHUNK_SIZE * CHUNK_SIZE / 32];
-                                for (cx, chunkyz) in chunk.iter().enumerate() {
-                                    'yiter: for (cy, chunkz) in chunkyz.iter().enumerate() {
-                                        for block in chunkz.iter() {
-                                            if block.0 != 0 {
-                                                // Only send the message if the ChunkFragment is not empty.
-                                                connection.send(
-                                                    MessageKind::Reliable,
-                                                    bincode::serialize(
-                                                        &ToClient::NewChunkFragment(
-                                                            pos.clone(),
-                                                            crate::block::FragmentPos([cx, cy]),
-                                                            serialize_fragment(&chunkz),
-                                                        ),
-                                                    )
-                                                    .unwrap(),
-                                                );
-                                                continue 'yiter;
-                                            }
-                                        }
+                        let mut info = [0; CHUNK_SIZE * CHUNK_SIZE / 32];
+                        for (cx, chunkyz) in chunk.iter().enumerate() {
+                            'yiter: for (cy, chunkz) in chunkyz.iter().enumerate() {
+                                for block in chunkz.iter() {
+                                    // Only send the message if the ChunkFragment is not empty.
+                                    if block.0 != 0 {
+                                        self.server.send_message(
+                                            *id,
+                                            bincode::serialize(&ToClient::NewChunkFragment(
+                                                pos.clone(),
+                                                crate::block::FragmentPos([cx, cy]),
+                                                serialize_fragment(&chunkz),
+                                            ))
+                                            .unwrap(),
+                                        );
+                                        continue 'yiter;
+                                    } else {
                                         // The ChunkFragment is empty
                                         let index = cx * CHUNK_SIZE + cy;
                                         info[index / 32] |= 1 << index % 32;
                                     }
                                 }
-                                connection.send(
-                                    MessageKind::Reliable,
-                                    bincode::serialize(&ToClient::NewChunkInfo(pos, info)).unwrap(),
-                                );
                             }
-                            ToNetwork::SetPos(_, _) => unreachable!(),
+                            self.server.send_message(
+                                *id,
+                                bincode::serialize(&ToClient::NewChunkInfo(pos, info)).unwrap(),
+                            );
                         }
-                        *last_message = Instant::now();
                     }
+                    ToNetwork::SetPos(_, _) => unreachable!(),
                 }
             }
-            /*if should_tick {
-                for _ in 0..(5 * CHUNK_SIZE * CHUNK_SIZE) {
-                    self.server.send(false).unwrap();
-                }
-            }*/
-        }
-    }
-
-    /// Ticks the server if it is time to
-    // TODO: Merge this with ClientImpl's equivalent
-    pub fn try_tick(&mut self) {
-        if self.ticker.try_tick() {
-            self.server.send(false).unwrap();
         }
     }
 }

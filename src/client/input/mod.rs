@@ -17,7 +17,6 @@ use gfx::texture::{FilterMethod, SamplerInfo, WrapMode};
 use gfx::traits::FactoryExt;
 use gfx::Factory;
 use glutin::MouseCursor;
-use net2::UdpSocketExt;
 
 use crate::block::{
     create_block_air, create_block_cube, BlockRegistry, Chunk, ChunkInfo, ChunkPos, ChunkSidesArray,
@@ -256,9 +255,7 @@ impl InputImpl {
         let network_tx;
         // Start threads
         {
-            use cobalt::{
-                BinaryRateLimiter, Client, Config, NoopPacketModifier, Server, UdpSocket,
-            };
+            use crate::simple::network::{SimpleClient, SimpleServer};
             // Input
             let (input_t, input_r) = channel();
             // Meshing
@@ -266,16 +263,10 @@ impl InputImpl {
             // Network
             let (network_t, network_r) = channel();
             // Client-server
-            let cfg = Config {
-                send_rate: config.tick_rate,
-                packet_max_size: 576, // 576 is the IPv4 "minimum reassembly buffer size"
-                connection_init_threshold: ::std::time::Duration::new(1, 0),
-                connection_drop_threshold: ::std::time::Duration::new(4, 0),
-                ..Config::default()
-            };
-            let mut server = Server::<UdpSocket, BinaryRateLimiter, NoopPacketModifier>::new(cfg);
-            let mut client = Client::<UdpSocket, BinaryRateLimiter, NoopPacketModifier>::new(cfg);
-
+            let (to_server, from_client) = channel();
+            let (to_client, from_server) = channel();
+            let client = SimpleClient::new(from_server, to_server);
+            let server = SimpleServer::new(from_client, to_client);
             {
                 let input_tx = input_t.clone();
                 let br2 = br.clone();
@@ -288,24 +279,7 @@ impl InputImpl {
             {
                 let input_tx = input_t.clone();
                 thread::spawn(move || {
-                    thread::sleep(std::time::Duration::from_millis(2000));
-                    client
-                        .connect("127.0.0.1:1106")
-                        .expect("Failed to bind to socket.");
-                    client
-                        .socket()
-                        .unwrap()
-                        .as_raw_udp_socket()
-                        .set_recv_buffer_size(1024 * 1024 * 8)
-                        .unwrap();
-                    client
-                        .socket()
-                        .unwrap()
-                        .as_raw_udp_socket()
-                        .set_send_buffer_size(1024 * 1024 * 8)
-                        .unwrap();
                     crate::client::network::start(network_r, input_tx, client);
-                    //client.disconnect();
                 });
                 println!("Started network thread");
             }
@@ -316,28 +290,7 @@ impl InputImpl {
                 let (worldgen_tx, worldgen_rx) = channel();
                 let game_t = game_tx.clone();
                 thread::spawn(move || {
-                    match server.listen("0.0.0.0:1106") {
-                        Ok(()) => {
-                            server
-                                .socket()
-                                .unwrap()
-                                .as_raw_udp_socket()
-                                .set_recv_buffer_size(1024 * 1024 * 8)
-                                .unwrap();
-                            server
-                                .socket()
-                                .unwrap()
-                                .as_raw_udp_socket()
-                                .set_send_buffer_size(1024 * 1024 * 8)
-                                .unwrap();
-                            crate::server::network::start(network_rx, game_t, server);
-                            //server.shutdown();
-                        }
-                        Err(e) => {
-                            println!("Failed to bind to socket. Error : {:?}", e);
-                        }
-                    }
-                    //server.shutdown();
+                    crate::server::network::start(network_rx, game_t, server);
                 });
                 let config = config.clone();
                 thread::spawn(move || {

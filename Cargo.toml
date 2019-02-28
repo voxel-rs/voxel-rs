@@ -21,7 +21,6 @@ rand = "*"
 serde = "*"
 serde_derive = "*"
 toml = "*"
-cobalt = "*"
 bincode = "*"
 net2 = "*"
 

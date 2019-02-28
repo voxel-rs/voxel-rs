@@ -1,6 +1,5 @@
 #[macro_use]
 extern crate gfx;
-use serde_derive::{Deserialize, Serialize};
 
 // MUST BE A MULTIPLE OF 8 !
 const CHUNK_SIZE: usize = 32;
@@ -45,6 +44,7 @@ mod network;
 mod player;
 mod render;
 mod server;
+mod simple;
 mod texture;
 mod util;
 

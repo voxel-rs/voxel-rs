@@ -2,7 +2,7 @@
 
 use crate::config::Config;
 use crate::player::PlayerPos;
-use nalgebra::{try_inverse, Matrix4, Perspective3, Vector3};
+use nalgebra::{Matrix4, Perspective3, Vector3};
 
 // TODO: Don't hardcode this
 pub const MOVE_FORWARD: u32 = 17;

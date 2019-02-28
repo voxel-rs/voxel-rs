@@ -4,6 +4,42 @@
 use crate::block::{BlockId, ChunkFragment};
 use crate::CHUNK_SIZE;
 
+/// A client-side network event
+pub enum ClientEvent {
+    /// Connection with the server established.
+    Connection,
+    /// Connection with the server closed or lost.
+    ConnectionClosed,
+    /// Message received from the server.
+    Message(Vec<u8>),
+}
+
+pub type ConnectionId = usize;
+
+/// A server-side network event
+pub enum ServerEvent {
+    /// Connection with a new client established.
+    Connection(ConnectionId),
+    /// Connection with a client closed or lost.
+    ConnectionClosed(ConnectionId),
+    /// Message received from a client.
+    Message(ConnectionId, Vec<u8>),
+}
+
+pub trait Server {
+    /// Next event.
+    fn next_event(&mut self) -> Option<ServerEvent>;
+    /// Send a message.
+    fn send_message(&mut self, connection: ConnectionId, message: Vec<u8>);
+}
+
+pub trait Client {
+    /// Next event.
+    fn next_event(&mut self) -> Option<ClientEvent>;
+    /// Send a message.
+    fn send_message(&mut self, message: Vec<u8>);
+}
+
 fn serialize_blocks(blocks: &[BlockId]) -> Vec<u8> {
     fn encode(out: &mut Vec<u8>, current_block: BlockId, mut count: u8) {
         if count == 0 {

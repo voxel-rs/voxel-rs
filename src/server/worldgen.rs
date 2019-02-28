@@ -43,7 +43,7 @@ impl ChunkGenerator {
         for i in 0..32 {
             seed_array[i] = ((seed >> (i * 8)) % 256) as u8;
         }
-        let mut rng = rand::StdRng::from_seed(seed_array);
+        let mut rng = rand::rngs::StdRng::from_seed(seed_array);
         for i in 0..CHUNK_SIZE {
             for j in 0..CHUNK_SIZE {
                 let height = (150.0

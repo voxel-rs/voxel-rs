@@ -47,18 +47,17 @@ pub mod messages {
     /// Server-to-server messages.
     pub mod server {
         use crate::block::{ChunkArray, ChunkPos};
+        use crate::network::ConnectionId;
         use crate::player::{PlayerInput, PlayerPos};
 
-        use cobalt::ConnectionID;
-
         pub enum ToNetwork {
-            NewChunk(ConnectionID, ChunkPos, Box<ChunkArray>),
-            SetPos(ConnectionID, PlayerPos),
+            NewChunk(ConnectionId, ChunkPos, Box<ChunkArray>),
+            SetPos(ConnectionId, PlayerPos),
         }
 
         #[derive(Debug)]
         pub enum ToGame {
-            PlayerEvent(ConnectionID, ToGamePlayer),
+            PlayerEvent(ConnectionId, ToGamePlayer),
             NewChunk(ChunkPos, Box<ChunkArray>),
         }
 

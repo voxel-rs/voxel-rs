@@ -128,14 +128,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cobalt"
-version = "0.22.0"
-source = "git+https://github.com/Technici4n/cobalt-rs#604e37f57cdaba5193664365b2eb1740c8df6ea3"
-dependencies = [
- "rand 0.3.23 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "cocoa"
 version = "0.18.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1113,7 +1105,6 @@ name = "voxel-rs"
 version = "0.1.0"
 dependencies = [
  "bincode 1.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "cobalt 0.22.0 (git+https://github.com/Technici4n/cobalt-rs)",
  "gfx 0.18.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gfx_device_gl 0.16.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gfx_window_glutin 0.29.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1270,6 +1261,11 @@ name = "xml-rs"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
+[[patch.unused]]
+name = "cobalt"
+version = "0.22.0"
+source = "git+https://github.com/Technici4n/cobalt-rs#604e37f57cdaba5193664365b2eb1740c8df6ea3"
+
 [metadata]
 "checksum adler32 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)" = "7e522997b529f05601e05166c07ed17789691f562762c7f3b987263d2dedee5c"
 "checksum alga 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)" = "2cc836ad7a40dc9d8049574e2a29979f5dc77deeea4d7ebcd29773452f0e9694"
@@ -1288,7 +1284,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum cfg-if 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)" = "082bb9b28e00d3c9d39cc03e64ce4cea0f1bb9b3fde493f0cbc008472d22bdf4"
 "checksum cgl 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "55e7ec0b74fe5897894cbc207092c577e87c52f8a59e8ca8d97ef37551f60a49"
 "checksum cloudabi 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)" = "ddfc5b9aa5d4507acaf872de71051dfd0e309860e88966e1051e462a077aac4f"
-"checksum cobalt 0.22.0 (git+https://github.com/Technici4n/cobalt-rs)" = "<none>"
 "checksum cocoa 0.18.4 (registry+https://github.com/rust-lang/crates.io-index)" = "cf79daa4e11e5def06e55306aa3601b87de6b5149671529318da048f67cdd77b"
 "checksum color_quant 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "0dbbb57365263e881e805dc77d94697c9118fd94d8da011240555aa7b23445bd"
 "checksum core-foundation 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)" = "4e2640d6d0bf22e82bed1b73c6aef8d5dd31e5abe6666c57e6d45e2649f4f887"

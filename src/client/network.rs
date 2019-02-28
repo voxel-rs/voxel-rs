@@ -2,21 +2,13 @@
 
 use crate::core::messages::client::{ToInput, ToNetwork};
 use crate::core::messages::network::{ToClient, ToServer};
-use crate::network::deserialize_fragment;
-use crate::util::Ticker;
+use crate::network::{deserialize_fragment, Client, ClientEvent};
 use std::collections::VecDeque;
 use std::sync::mpsc::{Receiver, Sender, TryRecvError};
 
-use cobalt::{Client, ClientEvent, MessageKind, PacketModifier, RateLimiter, Socket};
-
-pub fn start<S, R, M>(
-    client_rx: Receiver<ToNetwork>,
-    input_tx: Sender<ToInput>,
-    client: Client<S, R, M>,
-) where
-    S: Socket,
-    R: RateLimiter,
-    M: PacketModifier,
+pub fn start<C>(client_rx: Receiver<ToNetwork>, input_tx: Sender<ToInput>, client: C)
+where
+    C: Client,
 {
     let mut implementation = ClientImpl::from_parts(client_rx, input_tx, client);
 
@@ -24,46 +16,33 @@ pub fn start<S, R, M>(
         implementation.send_messages();
 
         implementation.receive_messages();
-
-        implementation.try_tick();
     }
 }
 
-struct ClientImpl<S, R, M>
+struct ClientImpl<C>
 where
-    S: Socket,
-    R: RateLimiter,
-    M: PacketModifier,
+    C: Client,
 {
     client_rx: Receiver<ToNetwork>,
     input_tx: Sender<ToInput>,
-    client: Client<S, R, M>,
-    connected: bool,
+    client: C,
     pending_messages: VecDeque<ToNetwork>,
-    ticker: Ticker,
-    received_messages: u64,
 }
 
-impl<S, R, M> ClientImpl<S, R, M>
+impl<C> ClientImpl<C>
 where
-    S: Socket,
-    R: RateLimiter,
-    M: PacketModifier,
+    C: Client,
 {
     pub fn from_parts(
         client_rx: Receiver<ToNetwork>,
         input_tx: Sender<ToInput>,
-        client: Client<S, R, M>,
+        client: C,
     ) -> Self {
-        let tick_rate = client.config().send_rate as u32;
         ClientImpl {
             client_rx,
             input_tx,
             client,
-            connected: false,
             pending_messages: VecDeque::new(),
-            ticker: Ticker::from_tick_rate(tick_rate),
-            received_messages: 0,
         }
     }
 
@@ -75,95 +54,62 @@ where
                 }
                 Err(kind) => match kind {
                     // TODO: something better than panicking
-                    TryRecvError::Disconnected => panic!(),
+                    TryRecvError::Disconnected => panic!("Network thread disconnected"),
                     TryRecvError::Empty => break,
                 },
             }
         }
-        if self.connected {
-            while let Some(message) = self.pending_messages.pop_front() {
-                let (out, kind) = match message {
-                    ToNetwork::SetInput(input) => (ToServer::SetInput(input), MessageKind::Instant),
-                    ToNetwork::SetRenderDistance(render_distance) => (
-                        ToServer::SetRenderDistance(render_distance),
-                        MessageKind::Reliable,
-                    ),
-                };
-                self.client
-                    .connection()
-                    .unwrap()
-                    .send(kind, bincode::serialize(&out).unwrap());
-            }
+        while let Some(message) = self.pending_messages.pop_front() {
+            let message = match message {
+                ToNetwork::SetInput(input) => ToServer::SetInput(input),
+                ToNetwork::SetRenderDistance(render_distance) => {
+                    ToServer::SetRenderDistance(render_distance)
+                }
+            };
+            self.client
+                .send_message(bincode::serialize(&message).unwrap());
         }
     }
 
     pub fn receive_messages(&mut self) {
-        loop {
-            let mut connection_lost = false;
-            match self.client.receive() {
-                Ok(message) => {
+        while let Some(event) = self.client.next_event() {
+            match event {
+                ClientEvent::Connection => (),
+                ClientEvent::ConnectionClosed => panic!("Connection closed"),
+                ClientEvent::Message(msg) => {
                     //println!("Network: received event {:?}", message);
-                    match message {
-                        ClientEvent::Message(bytes) => {
-                            match bincode::deserialize(bytes.as_ref()).unwrap() {
-                                ToClient::NewChunkFragment(pos, fpos, frag) => {
-                                    //println!("Network: received chunk fragment @ {:?}, {:?}", pos, fpos);
-                                    self.input_tx
-                                        .send(ToInput::NewChunkFragment(
-                                            pos,
-                                            fpos,
-                                            deserialize_fragment(&frag[..]),
-                                        ))
-                                        .unwrap();
-                                    self.received_messages += 1;
-                                }
-                                ToClient::NewChunkInfo(pos, info) => {
-                                    //println!("Received ChunkInfo @ {:?}", pos);
-                                    self.input_tx
-                                        .send(ToInput::NewChunkInfo(pos, info))
-                                        .unwrap();
-                                }
-                                ToClient::SetPos(pos) => {
-                                    self.input_tx.send(ToInput::SetPos(pos)).unwrap();
-                                }
-                            }
+                    match bincode::deserialize(msg.as_ref()).unwrap() {
+                        ToClient::NewChunkFragment(pos, fpos, frag) => {
+                            //println!("Network: received chunk fragment @ {:?}, {:?}", pos, fpos);
+                            self.input_tx
+                                .send(ToInput::NewChunkFragment(
+                                    pos,
+                                    fpos,
+                                    deserialize_fragment(&frag[..]),
+                                ))
+                                .unwrap();
                         }
-                        ClientEvent::Connection => {
-                            self.connected = true;
+                        ToClient::NewChunkInfo(pos, info) => {
+                            //println!("Received ChunkInfo @ {:?}", pos);
+                            self.input_tx
+                                .send(ToInput::NewChunkInfo(pos, info))
+                                .unwrap();
                         }
-                        ClientEvent::ConnectionFailed => {
-                            connection_lost = true;
+                        ToClient::SetPos(pos) => {
+                            self.input_tx.send(ToInput::SetPos(pos)).unwrap();
                         }
-                        _ => {}
                     }
                 }
-                Err(kind) => match kind {
-                    // TODO: something better than panicking
-                    TryRecvError::Disconnected => panic!(),
-                    TryRecvError::Empty => break,
-                },
-            }
-            if connection_lost {
-                self.client
-                    .disconnect()
-                    .expect("Failed to disconnect client.");
-                self.client
-                    .connect("127.0.0.1:1106")
-                    .expect("Failed to bind to socket.");
-                println!("Reconnecting to server...");
-            }
-            if self.received_messages >= 1024 {
-                //println!("Network: received {} messages", self.received_messages);
-                self.received_messages = 0;
             }
         }
-    }
-
-    /// Ticks the client if it is time to
-    // TODO: Merge this with ServerImpl's equivalent
-    pub fn try_tick(&mut self) {
-        if self.ticker.try_tick() {
-            self.client.send(false).unwrap();
-        }
+        // if connection_lost {
+        //     self.client
+        //         .disconnect()
+        //         .expect("Failed to disconnect client.");
+        //     self.client
+        //         .connect("127.0.0.1:1106")
+        //         .expect("Failed to bind to socket.");
+        //     println!("Reconnecting to server...");
+        // }
     }
 }
