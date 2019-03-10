@@ -3,6 +3,7 @@
 use crate::texture::TextureRegistry;
 use crate::{Vertex, CHUNK_SIZE};
 use serde_derive::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 /// Block representation
 pub trait Block {
@@ -28,6 +29,13 @@ pub type BlockRef = Box<Block + Send + Sync>;
 /// Indicates what non-void ```ChunkFragment```s a Chunk contains.
 /// It is stored as 32-bit integers so that common functions are implemented.
 pub type ChunkInfo = [u32; CHUNK_SIZE * CHUNK_SIZE / 32];
+pub type ChunkMap = HashMap<ChunkPos, ChunkState>;
+
+pub enum ChunkState {
+    Generating,
+    Generated(Box<ChunkArray>),
+}
+
 
 /// Chunk type
 #[derive(Clone, Debug)]

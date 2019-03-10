@@ -1,6 +1,6 @@
 //! The game thread is the main server thread. It is authoritative over the game.
 
-use crate::block::{ChunkArray, ChunkPos};
+use crate::block::{ChunkMap, ChunkPos, ChunkState};
 use crate::config::Config;
 use crate::core::messages::server::{ToGame, ToNetwork, ToWorldgen};
 use crate::network::ConnectionId;
@@ -32,15 +32,10 @@ struct GameImpl {
     rx: Receiver<ToGame>,
     network_tx: Sender<ToNetwork>,
     worldgen_tx: Sender<ToWorldgen>,
-    chunks: HashMap<ChunkPos, ChunkState>,
+    chunks: ChunkMap,
     players: HashMap<ConnectionId, Player>,
     last_tick: Instant,
     last_update: Ticker,
-}
-
-enum ChunkState {
-    Generating,
-    Generated(Box<ChunkArray>),
 }
 
 impl GameImpl {
@@ -112,7 +107,7 @@ impl GameImpl {
         let dt = dt.subsec_nanos() as f64 / 1_000_000_000.0;
 
         for (_, p) in &mut self.players {
-            p.tick(dt, &self.config);
+            p.tick(dt, &self.config, &self.chunks);
         }
     }
 

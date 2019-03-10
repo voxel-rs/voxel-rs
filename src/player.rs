@@ -1,6 +1,6 @@
 //! `Player`-related data structures.
 
-use crate::block::ChunkPos;
+use crate::block::{ChunkMap, ChunkPos, ChunkState};
 use crate::config::Config;
 use nalgebra::Vector3;
 use serde_derive::{Deserialize, Serialize};
@@ -32,11 +32,13 @@ pub struct Player {
 }
 
 impl Player {
-    pub fn tick(&mut self, dt: f64, config: &Config) {
+    pub fn tick(&mut self, dt: f64, config: &Config, world: &ChunkMap) {
         let mut speedup = 1.0;
         if self.keys & (1 << 6) > 0 {
             speedup = config.ctrl_speedup;
         }
+
+        let old_pos = self.pos.clone();
         if self.keys & (1 << 0) > 0 {
             self.pos += speedup * self.mv_direction(0.0) * (config.player_speed * dt);
         }
@@ -54,6 +56,14 @@ impl Player {
         }
         if self.keys & (1 << 5) > 0 {
             self.pos.y -= speedup * config.player_speed * dt;
+        }
+
+        let chunk_pos = self.get_pos().chunk_pos();
+        // Can't move to an unloaded chunk
+        if !world.contains_key(&chunk_pos) {
+            self.pos = old_pos;
+        } else if let &ChunkState::Generating = world.get(&chunk_pos).unwrap() {
+            self.pos = old_pos;
         }
     }
 
