@@ -4,6 +4,7 @@
 //! The `game` submodule is reponsible for chunk handling, rendering and meshing.
 //! The `input` submodule manages interactions between the player, this thread, and the other client side threads.
 
+use glutin::ElementState;
 use std;
 use std::cell::RefCell;
 use std::collections::{HashMap, VecDeque};
@@ -106,6 +107,7 @@ struct InputState {
     pub keyboard_state: KeyboardState,
     pub camera: Camera,
     pub timer: Instant,
+    pub mouse_state : ElementState
 }
 
 /// Game-related state
@@ -353,6 +355,7 @@ impl InputImpl {
                 keyboard_state: KeyboardState::new(),
                 camera: cam,
                 timer: Instant::now(),
+                mouse_state: ElementState::Released
             },
             game_state: ClientGameState {
                 chunks: HashMap::new(),

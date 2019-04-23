@@ -1,5 +1,6 @@
 //! `Player`-related data structures.
 
+use glutin::ElementState;
 use std::ops::BitOrAssign;
 use crate::block::{ChunkMap, ChunkPos, ChunkState};
 use crate::config::Config;
@@ -20,7 +21,8 @@ pub enum PlayerKey {
     Right,
     Up,
     Down,
-    Control
+    Control,
+    Hit
 }
 
 // A player's currentcontrols
@@ -45,6 +47,13 @@ impl PlayerControls {
 
     pub fn pressed(self, key : PlayerKey) -> bool {
         self.get_bitmap(key as u32)
+    }
+
+    pub fn mouse(mouse_state : ElementState) -> PlayerControls {
+        match mouse_state {
+            ElementState::Pressed => PlayerKey::Hit.into(),
+            _ => PlayerControls::none()
+        }
     }
 }
 

@@ -45,11 +45,13 @@ impl InputImpl {
                         }
                     },
                     WindowEvent::MouseInput { button, state, .. } => {
-                        if button == MouseButton::Left && state == ElementState::Pressed {
+                        if button == MouseButton::Right && state == ElementState::Pressed {
                             println!("Player position: {:?}", self.input_state.camera.get_pos());
                             let player_chunk = self.input_state.camera.get_pos().chunk_pos();
                             let c = self.game_state.chunks.get(&player_chunk).unwrap().borrow();
                             println!("Player chunk: {:?} (fragment_count: {}, adj_chunks: {}, state: {:?})", player_chunk, c.fragments, c.adj_chunks, c.state);
+                        } else {
+                            self.input_state.mouse_state = state
                         }
                     },
                     _ => {},
@@ -119,7 +121,7 @@ impl InputImpl {
         if ticker.try_tick() {
             let keys = {
                 let ks = &input_state.keyboard_state;
-                let mut mask = PlayerControls::none();
+                let mut mask = PlayerControls::mouse(input_state.mouse_state);
                 if ks.is_key_pressed(MOVE_FORWARD) {
                     mask |= PlayerKey::Forward.into()
                 }
