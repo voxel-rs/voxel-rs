@@ -55,14 +55,16 @@ impl InnerChunkPos {
 }
 
 pub struct ChunkMap{
-    map : HashMap<ChunkPos, ChunkState>
+    map : HashMap<ChunkPos, ChunkState>,
+    hot : HashMap<ChunkPos, ()>
 }
 
 impl ChunkMap {
 
     pub fn new() -> ChunkMap {
         ChunkMap {
-            map : HashMap::new()
+            map : HashMap::new(),
+            hot : HashMap::new()
         }
     }
 
@@ -82,35 +84,99 @@ impl ChunkMap {
         self.map.retain(f)
     }
 
+    pub fn is_hot(&self, pos : &ChunkPos) -> bool {
+        self.hot.get(pos) != None
+    }
+
+    pub fn heat(&mut self, pos : ChunkPos) {
+        self.hot.insert(pos, ());
+    }
+
+    pub fn cool_all(&mut self) {
+        self.hot.clear()
+    }
+
     pub fn contains_key(&self, pos : &ChunkPos) -> bool {
         return self.map.contains_key(pos);
     }
 
     pub fn set(&mut self, pos : ChunkPos, i_pos : InnerChunkPos, block : BlockId) {
+        let mut heated = false;
         match self.get_mut(&pos) {
             None => {print!("Failed to set {:?} : {:?} to {:?}!\n", pos, i_pos, block);},
             Some(ref mut state) => {
                 print!("Setting {:?} : {:?} to {:?}!\n", pos, i_pos, block);
                 state.set(block, i_pos);
+                heated = true;
             }
+        }
+        if heated {
+            self.heat(pos);
         }
 
     }
 
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum ChunkState {
     Generating,
     Generated(Box<ChunkArray>),
+    Modified(Box<ChunkArray>)
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum ChunkContents {
+    Generated(Box<ChunkArray>),
+    Modified(Box<ChunkArray>)
+}
+
+impl ChunkContents {
+
+    pub fn iter(&self) -> impl Iterator<Item = &[ChunkFragment; CHUNK_SIZE]> {
+        match self {
+            ChunkContents::Generated(ref c) | ChunkContents::Modified(ref c) => c.iter()
+        }
+    }
+
+}
+
+impl From<ChunkContents> for ChunkState {
+
+    fn from(status : ChunkContents) -> ChunkState {
+        match status {
+            ChunkContents::Generated(c) => ChunkState::Generated(c),
+            ChunkContents::Modified(c) => ChunkState::Modified(c)
+        }
+    }
+
+}
+
+impl From<ChunkState> for Option<ChunkContents> {
+
+    fn from(state : ChunkState) -> Option<ChunkContents> {
+        match state {
+            ChunkState::Generating => None,
+            ChunkState::Generated(c) => Some(ChunkContents::Generated(c)),
+            ChunkState::Modified(c) => Some(ChunkContents::Modified(c))
+        }
+    }
+
 }
 
 impl ChunkState {
 
-    pub fn set(&mut self, block : BlockId, i_pos : InnerChunkPos) {
+    pub fn is_modified(&self) -> bool {
+        match self {
+            ChunkState::Modified(_) => true,
+            _ => false
+        }
+    }
+
+    pub fn set(&mut self, block : BlockId, _i_pos : InnerChunkPos) {
         match self {
             ChunkState::Generating => panic!("Can't spawn in chunk yet to be generated!"),
-            ChunkState::Generated(ref mut arr) => {
+            ChunkState::Generated(ref mut arr) | ChunkState::Modified(ref mut arr) => {
                 //let x = i_pos.0[0] as usize;
                 //let y = i_pos.0[1] as usize;
                 //let z = i_pos.0[2] as usize;
@@ -123,7 +189,7 @@ impl ChunkState {
                         }
                     }
                 }
-                *arr = Box::new([[[BlockId::from(0); CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE])
+                *self = ChunkState::Modified(Box::new([[[BlockId::from(0); CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE]))
                 //arr[x][y][z] = block;
             }
         }
