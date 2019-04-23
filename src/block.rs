@@ -36,6 +36,20 @@ pub enum ChunkState {
     Generated(Box<ChunkArray>),
 }
 
+impl ChunkState {
+
+    pub fn set(&mut self, block : BlockId, x : usize, y : usize, z : usize) {
+        match self {
+            ChunkState::Generating => panic!("Can't spawn in chunk yet to be generated!"),
+            ChunkState::Generated(ref mut arr) => {
+                print!("Setting {}, {}, {} to {:?}!\n", x, y, z, block);
+                arr[x][y][z] = block;
+            }
+        }
+    }
+
+}
+
 
 /// Chunk type
 #[derive(Clone, Debug)]

@@ -107,7 +107,7 @@ impl GameImpl {
         let dt = dt.subsec_nanos() as f64 / 1_000_000_000.0;
 
         for (_, p) in &mut self.players {
-            p.tick(dt, &self.config, &self.chunks);
+            p.tick(dt, &self.config, &mut self.chunks);
         }
     }
 
