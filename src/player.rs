@@ -104,18 +104,8 @@ pub struct Player {
 impl Player {
 
     fn handle_hit(&mut self, _dt: f64, _config: &Config, world: &mut ChunkMap) {
-        match world.get_mut(&self.get_pos().chunk_pos()) {
-            None => {},
-            Some(ref mut state) => {
-                let inner_pos = &self.get_pos().inner_chunk_pos();
-                state.set(
-                    BlockId::from(0),
-                    inner_pos[0],
-                    inner_pos[1],
-                    inner_pos[2]
-                )
-            }
-        }
+        let inner_pos = self.get_pos().inner_chunk_pos();
+        world.set(&self.get_pos().chunk_pos(), BlockId::from(0), inner_pos[0], inner_pos[1], inner_pos[2])
     }
 
     pub fn tick(&mut self, dt: f64, config: &Config, world: &mut ChunkMap) {

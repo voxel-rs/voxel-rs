@@ -50,7 +50,7 @@ impl GameImpl {
             rx,
             network_tx,
             worldgen_tx,
-            chunks: HashMap::new(),
+            chunks: ChunkMap::new(),
             players: HashMap::new(),
             last_tick: Instant::now(),
             last_update: Ticker::from_tick_rate(60),
