@@ -30,6 +30,30 @@ pub type BlockRef = Box<Block + Send + Sync>;
 /// Indicates what non-void ```ChunkFragment```s a Chunk contains.
 /// It is stored as 32-bit integers so that common functions are implemented.
 pub type ChunkInfo = [u32; CHUNK_SIZE * CHUNK_SIZE / 32];
+
+#[derive(Debug, Copy, Clone)]
+pub struct InnerChunkPos([u8; 3]);
+
+impl InnerChunkPos {
+    fn coord_to_inner(coord : f64) -> u8 {
+        let mod_coord = coord as i64 % CHUNK_SIZE as i64;
+        (if mod_coord < 0 {
+            CHUNK_SIZE as i64 + mod_coord
+        } else {
+            mod_coord
+        }) as u8
+    }
+    pub fn from_coords(coords : [f64; 3]) -> InnerChunkPos {
+        InnerChunkPos(
+            [
+                InnerChunkPos::coord_to_inner(coords[0]),
+                InnerChunkPos::coord_to_inner(coords[1]),
+                InnerChunkPos::coord_to_inner(coords[2])
+            ]
+        )
+    }
+}
+
 pub struct ChunkMap{
     map : HashMap<ChunkPos, ChunkState>
 }
@@ -62,12 +86,12 @@ impl ChunkMap {
         return self.map.contains_key(pos);
     }
 
-    pub fn set(&mut self, pos : &ChunkPos, block : BlockId, x : usize, y : usize, z : usize) {
-        match self.get_mut(pos) {
-            None => {print!("Failed to set {:?} : ({}, {}, {}) to {:?}!\n", pos, x, y, z, block);},
+    pub fn set(&mut self, pos : ChunkPos, i_pos : InnerChunkPos, block : BlockId) {
+        match self.get_mut(&pos) {
+            None => {print!("Failed to set {:?} : {:?} to {:?}!\n", pos, i_pos, block);},
             Some(ref mut state) => {
-                print!("Setting {:?} : ({}, {}, {}) to {:?}!\n", pos, x, y, z, block);
-                state.set(block, x, y, z);
+                print!("Setting {:?} : {:?} to {:?}!\n", pos, i_pos, block);
+                state.set(block, i_pos);
             }
         }
 
@@ -82,10 +106,13 @@ pub enum ChunkState {
 
 impl ChunkState {
 
-    pub fn set(&mut self, block : BlockId, x : usize, y : usize, z : usize) {
+    pub fn set(&mut self, block : BlockId, i_pos : InnerChunkPos) {
         match self {
             ChunkState::Generating => panic!("Can't spawn in chunk yet to be generated!"),
             ChunkState::Generated(ref mut arr) => {
+                let x = i_pos.0[0] as usize;
+                let y = i_pos.0[1] as usize;
+                let z = i_pos.0[2] as usize;
                 arr[x][y][z] = block;
             }
         }

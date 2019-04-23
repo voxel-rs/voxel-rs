@@ -2,7 +2,7 @@
 
 use glutin::ElementState;
 use std::ops::BitOrAssign;
-use crate::block::{ChunkMap, ChunkPos, ChunkState, BlockId};
+use crate::block::{ChunkMap, ChunkPos, InnerChunkPos, ChunkState, BlockId};
 use crate::config::Config;
 use nalgebra::Vector3;
 use serde_derive::{Deserialize, Serialize};
@@ -104,8 +104,7 @@ pub struct Player {
 impl Player {
 
     fn handle_hit(&mut self, _dt: f64, _config: &Config, world: &mut ChunkMap) {
-        let inner_pos = self.get_pos().inner_chunk_pos();
-        world.set(&self.get_pos().chunk_pos(), BlockId::from(0), inner_pos[0], inner_pos[1], inner_pos[2])
+        world.set(self.get_pos().chunk_pos(), self.get_pos().inner_chunk_pos(), BlockId::from(0))
     }
 
     pub fn tick(&mut self, dt: f64, config: &Config, world: &mut ChunkMap) {
@@ -177,20 +176,7 @@ impl PlayerPos {
         }
         ChunkPos(ret)
     }
-    pub fn inner_chunk_pos(self) -> [usize; 3] {
-        use crate::CHUNK_SIZE;
-        let mut x = self.0[0] as i64 % CHUNK_SIZE as i64;
-        let mut y = self.0[1] as i64 % CHUNK_SIZE as i64;
-        let mut z = self.0[2] as i64 % CHUNK_SIZE as i64;
-        if x < 0 {
-            x = CHUNK_SIZE as i64 + x;
-        }
-        if y < 0 {
-            y = CHUNK_SIZE as i64 + y;
-        }
-        if z < 0 {
-            z = CHUNK_SIZE as i64 + z;
-        }
-        [x as usize, y as usize, z as usize]
+    pub fn inner_chunk_pos(self) -> InnerChunkPos {
+        InnerChunkPos::from_coords(self.0)
     }
 }
