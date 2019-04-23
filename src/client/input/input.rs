@@ -1,4 +1,5 @@
 use super::ChunkState;
+use crate::player::{PlayerKey, PlayerControls};
 use super::*;
 use glutin::dpi::LogicalPosition;
 
@@ -118,14 +119,29 @@ impl InputImpl {
         if ticker.try_tick() {
             let keys = {
                 let ks = &input_state.keyboard_state;
-                let mut mask = 0;
-                mask |= ((ks.is_key_pressed(MOVE_FORWARD) as u8) << 0) as u8;
-                mask |= ((ks.is_key_pressed(MOVE_LEFT) as u8) << 1) as u8;
-                mask |= ((ks.is_key_pressed(MOVE_BACKWARD) as u8) << 2) as u8;
-                mask |= ((ks.is_key_pressed(MOVE_RIGHT) as u8) << 3) as u8;
-                mask |= ((ks.is_key_pressed(MOVE_UP) as u8) << 4) as u8;
-                mask |= ((ks.is_key_pressed(MOVE_DOWN) as u8) << 5) as u8;
-                mask |= ((ks.is_key_pressed(CONTROL) as u8) << 6) as u8;
+                let mut mask = PlayerControls::none();
+                if ks.is_key_pressed(MOVE_FORWARD) {
+                    mask |= PlayerKey::Forward.into()
+                }
+                if ks.is_key_pressed(MOVE_LEFT) {
+                    mask |= PlayerKey::Left.into()
+                }
+                if ks.is_key_pressed(MOVE_BACKWARD) {
+                    mask |= PlayerKey::Backward.into()
+                }
+                if ks.is_key_pressed(MOVE_RIGHT) {
+                    mask |= PlayerKey::Right.into()
+                }
+
+                if ks.is_key_pressed(MOVE_UP) {
+                    mask |= PlayerKey::Up.into()
+                }
+                if ks.is_key_pressed(MOVE_DOWN) {
+                    mask |= PlayerKey::Down.into()
+                }
+                if ks.is_key_pressed(CONTROL) {
+                    mask |= PlayerKey::Control.into()
+                }
                 mask
             };
             let yp = input_state.camera.get_yaw_pitch();

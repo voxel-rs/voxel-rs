@@ -4,7 +4,7 @@ use crate::block::{ChunkMap, ChunkPos, ChunkState};
 use crate::config::Config;
 use crate::core::messages::server::{ToGame, ToNetwork, ToWorldgen};
 use crate::network::ConnectionId;
-use crate::player::Player;
+use crate::player::{Player, PlayerControls};
 use crate::util::Ticker;
 use std::collections::HashMap;
 use std::sync::mpsc::{Receiver, Sender};
@@ -80,7 +80,7 @@ impl GameImpl {
                             pitch: 0.0,
                             render_distance: 0,
                             chunks: HashMap::new(),
-                            keys: 0,
+                            keys: PlayerControls::none(),
                         },
                     );
                 }

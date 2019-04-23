@@ -1,18 +1,79 @@
 //! `Player`-related data structures.
 
+use std::ops::BitOrAssign;
 use crate::block::{ChunkMap, ChunkPos, ChunkState};
 use crate::config::Config;
 use nalgebra::Vector3;
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::ops::BitOr;
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct PlayerPos(pub [f64; 3]);
 
+// Invidual key controls
+#[derive(Debug, Clone, Copy)]
+pub enum PlayerKey {
+    Forward,
+    Left,
+    Backward,
+    Right,
+    Up,
+    Down,
+    Control
+}
+
+// A player's currentcontrols
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
+pub struct PlayerControls {
+    keys : u8
+}
+
+impl PlayerControls {
+    fn key_bitmap(addr : u32) -> PlayerControls {
+        PlayerControls{
+            keys : (1 << addr) as u8
+        }
+    }
+    fn get_bitmap(self, addr : u32) -> bool {
+        (self.keys & ((1 << addr) as u8)) > 0
+    }
+
+    pub fn none() -> PlayerControls {
+        PlayerControls { keys : 0 }
+    }
+
+    pub fn pressed(self, key : PlayerKey) -> bool {
+        self.get_bitmap(key as u32)
+    }
+}
+
+impl From<PlayerKey> for PlayerControls {
+    fn from(key : PlayerKey) -> PlayerControls {
+        return PlayerControls::key_bitmap(key as u32);
+    }
+}
+
+impl BitOr for PlayerControls {
+    type Output = PlayerControls;
+
+    fn bitor(self, other : PlayerControls) -> PlayerControls {
+        PlayerControls {
+            keys : self.keys | other.keys
+        }
+    }
+}
+
+impl BitOrAssign for PlayerControls {
+    fn bitor_assign(&mut self, rhs : Self) {
+        self.keys |= rhs.keys;
+    }
+}
+
 /// A player's inputs
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PlayerInput {
-    pub keys: u8,
+    pub keys: PlayerControls,
     /// Yaw in degrees
     pub yaw: f64,
     /// Pitch in degrees
@@ -28,33 +89,33 @@ pub struct Player {
     pub pitch: f64,
     pub render_distance: u64,
     pub chunks: HashMap<ChunkPos, ()>,
-    pub keys: u8,
+    pub keys: PlayerControls,
 }
 
 impl Player {
     pub fn tick(&mut self, dt: f64, config: &Config, world: &ChunkMap) {
         let mut speedup = 1.0;
-        if self.keys & (1 << 6) > 0 {
+        if self.keys.pressed(PlayerKey::Control) {
             speedup = config.ctrl_speedup;
         }
 
         let old_pos = self.pos.clone();
-        if self.keys & (1 << 0) > 0 {
+        if self.keys.pressed(PlayerKey::Forward) {
             self.pos += speedup * self.mv_direction(0.0) * (config.player_speed * dt);
         }
-        if self.keys & (1 << 1) > 0 {
+        if self.keys.pressed(PlayerKey::Left) {
             self.pos += speedup * self.mv_direction(90.0) * (config.player_speed * dt);
         }
-        if self.keys & (1 << 2) > 0 {
+        if self.keys.pressed(PlayerKey::Backward) {
             self.pos += speedup * self.mv_direction(180.0) * (config.player_speed * dt);
         }
-        if self.keys & (1 << 3) > 0 {
+        if self.keys.pressed(PlayerKey::Right) {
             self.pos += speedup * self.mv_direction(270.0) * (config.player_speed * dt);
         }
-        if self.keys & (1 << 4) > 0 {
+        if self.keys.pressed(PlayerKey::Up) {
             self.pos.y += speedup * config.player_speed * dt;
         }
-        if self.keys & (1 << 5) > 0 {
+        if self.keys.pressed(PlayerKey::Down) {
             self.pos.y -= speedup * config.player_speed * dt;
         }
 
