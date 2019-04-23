@@ -173,22 +173,13 @@ impl ChunkState {
         }
     }
 
-    pub fn set(&mut self, block : BlockId, _i_pos : InnerChunkPos) {
+    pub fn set(&mut self, _block : BlockId, _i_pos : InnerChunkPos) {
         match self {
             ChunkState::Generating => panic!("Can't spawn in chunk yet to be generated!"),
-            ChunkState::Generated(ref mut arr) | ChunkState::Modified(ref mut arr) => {
+            ChunkState::Generated(ref mut _arr) | ChunkState::Modified(ref mut _arr) => {
                 //let x = i_pos.0[0] as usize;
                 //let y = i_pos.0[1] as usize;
                 //let z = i_pos.0[2] as usize;
-                for i in arr.iter() {
-                    for j in i.iter() {
-                        for k in j.iter() {
-                            if *k != BlockId::from(0) {
-                                print!("Nonzero block ID {:?} detected!\n", k);
-                            }
-                        }
-                    }
-                }
                 *self = ChunkState::Modified(Box::new([[[BlockId::from(0); CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE]))
                 //arr[x][y][z] = block;
             }
@@ -269,6 +260,19 @@ impl ChunkPos {
             maxcoord = i64::max(maxcoord, (other.0[i] - self.0[i]).abs());
         }
         maxcoord as u64
+    }
+    pub fn get_adjacent(self) -> [ChunkPos; 6] {
+        let x = self.0[0];
+        let y = self.0[1];
+        let z = self.0[2];
+        [
+            ChunkPos([x + 1, y, z]),
+            ChunkPos([x, y + 1, z]),
+            ChunkPos([x, y, z + 1]),
+            ChunkPos([x - 1, y, z]),
+            ChunkPos([x, y - 1, z]),
+            ChunkPos([x, y, z - 1])
+        ]
     }
 }
 

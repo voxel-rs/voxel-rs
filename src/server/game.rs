@@ -93,7 +93,7 @@ impl GameImpl {
                     self.players.get_mut(&id).unwrap().render_distance = render_distance
                 }
             },
-            ToGame::NewChunk(pos, s) => {
+            ToGame::NewChunk(pos, s, _) => {
                 if let Some(state) = self.chunks.get_mut(&pos) {
                     *state = s.into();
                 }
@@ -167,7 +167,7 @@ impl GameImpl {
                             None => (),
                             Some(c) => {
                                 network_tx
-                                    .send(ToNetwork::NewChunk(*id, pos, c))
+                                    .send(ToNetwork::NewChunk(*id, pos, c, chunks.is_hot(&pos)))
                                     .unwrap();
                                 player_entry.or_insert(());
                             }

@@ -154,6 +154,8 @@ struct ChunkData {
     pub chunk_info: ChunkInfo,
     /// The chunk's state
     pub state: ChunkState,
+    /// Whether thing chunk is hot
+    pub hot : bool
 }
 
 /// A client chunk's state
