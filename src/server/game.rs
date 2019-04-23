@@ -179,6 +179,7 @@ impl GameImpl {
         }
 
         // Remove chunks that are far from all players
+        /*
         chunks.retain(|pos, _| {
             for (_, player) in players.iter() {
                 let p = player.get_pos();
@@ -188,6 +189,7 @@ impl GameImpl {
             }
             false
         });
+        */
 
         // Send physics updates
         if last_update.try_tick() {

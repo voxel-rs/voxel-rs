@@ -99,6 +99,7 @@ impl ChunkMap {
 
 }
 
+#[derive(Debug)]
 pub enum ChunkState {
     Generating,
     Generated(Box<ChunkArray>),
@@ -110,10 +111,20 @@ impl ChunkState {
         match self {
             ChunkState::Generating => panic!("Can't spawn in chunk yet to be generated!"),
             ChunkState::Generated(ref mut arr) => {
-                let x = i_pos.0[0] as usize;
-                let y = i_pos.0[1] as usize;
-                let z = i_pos.0[2] as usize;
-                arr[x][y][z] = block;
+                //let x = i_pos.0[0] as usize;
+                //let y = i_pos.0[1] as usize;
+                //let z = i_pos.0[2] as usize;
+                for i in arr.iter() {
+                    for j in i.iter() {
+                        for k in j.iter() {
+                            if *k != BlockId::from(0) {
+                                print!("Nonzero block ID {:?} detected!\n", k);
+                            }
+                        }
+                    }
+                }
+                *arr = Box::new([[[BlockId::from(0); CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE])
+                //arr[x][y][z] = block;
             }
         }
     }
