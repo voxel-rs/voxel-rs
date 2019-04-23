@@ -173,17 +173,17 @@ impl ChunkState {
         }
     }
 
-    pub fn set(&mut self, _block : BlockId, _i_pos : InnerChunkPos) {
+    pub fn set(&mut self, block : BlockId, i_pos : InnerChunkPos) {
         match self {
             ChunkState::Generating => panic!("Can't spawn in chunk yet to be generated!"),
-            ChunkState::Generated(ref mut _arr) | ChunkState::Modified(ref mut _arr) => {
-                //let x = i_pos.0[0] as usize;
-                //let y = i_pos.0[1] as usize;
-                //let z = i_pos.0[2] as usize;
-                *self = ChunkState::Modified(Box::new([[[BlockId::from(0); CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE]))
-                //arr[x][y][z] = block;
+            ChunkState::Generated(ref mut arr) | ChunkState::Modified(ref mut arr) => {
+                let x = i_pos.0[0] as usize;
+                let y = i_pos.0[1] as usize;
+                let z = i_pos.0[2] as usize;
+                arr[x][y][z] = block;
+                *self = ChunkState::Modified(arr.clone());
             }
-        }
+        };
     }
 
 }
