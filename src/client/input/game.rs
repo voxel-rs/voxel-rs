@@ -8,23 +8,15 @@ impl InputImpl {
     pub fn process_chunk_messages(&mut self) {
         for message in self.pending_messages.drain(..) {
             match message {
-                ToInput::NewChunkFragment(pos, fpos, frag, hot) => {
-
-                    //print!("New fragment {:?} : {:?}!\n", pos, fpos);
-
+                ToInput::NewChunkFragment(pos, fpos, frag, _) => {
                     if let Some(data) = self.game_state.chunks.get(&pos) {
                         let mut data = &mut *data.borrow_mut();
                         let index = fpos.0[0] * 32 + fpos.0[1];
                         // New fragment
-                        let not_loaded = data.chunk_info[index / 32] & (1 << (index % 32)) == 0;
-
-                        // Heat chunk if appropriate
-                        data.hot = hot;
-
-                        if not_loaded || hot {
+                        if data.chunk_info[index / 32] & (1 << (index % 32)) == 0 {
                             data.chunk_info[index / 32] |= 1 << (index % 32);
                             data.chunk.blocks[fpos.0[0]][fpos.0[1]] = *frag;
-                            if not_loaded {data.fragments += 1;}
+                            data.fragments += 1;
                             // TODO: check that the chunk is in render_distance but NOT in (render_distance; rander_distance+1]
                             // Update adjacent chunks too
                             Self::check_finalize_chunk(
@@ -74,7 +66,7 @@ impl InputImpl {
                 }
                 if let Some(c) = chunks.get(&pos) {
                     let mut adj_chunk = c.borrow_mut();
-                    if (adj_chunk.adj_chunks & (1 << face) == 0) || adj_chunk.hot {
+                    if adj_chunk.adj_chunks & (1 << face) == 0 {
                         adj_chunk.adj_chunks |= 1 << face;
                         // We update that adjacent chunk's sides with the current chunk !
                         Self::update_side(
@@ -118,9 +110,9 @@ impl InputImpl {
                                 adj_chunks: 0,
                                 chunk_info: [0; CHUNK_SIZE * CHUNK_SIZE / 32],
                                 state: ChunkState::Unmeshed,
-                                hot : false
+                                hot: false
                             })
-                    });
+                        });
                 }
             }
         }
@@ -131,41 +123,21 @@ impl InputImpl {
             .chunks
             .retain(|pos, _| pos.orthogonal_dist(player_chunk) <= render_dist);
 
-        /*
-        // For each chunk, if hot, set the adjacent chunks to unmeshed
-        for (pos, chunk) in self.game_state.chunks.iter() {
-            if chunk.borrow().hot {
-                let adj = pos.get_adjacent();
-                for a in adj.iter() {
-                    if let Some(chunk) = self.game_state.chunks.get(a) {
-                        chunk.borrow_mut().state = ChunkState::Unmeshed;
-                    }
-                }
-            }
-        }
-        */
-
         // Start meshing for new chunks
         for (pos, chunk) in self.game_state.chunks.iter() {
             let mut c = chunk.borrow_mut();
             // TODO: FRAGMENT_COUNT const
-
-            if c.hot || (c.adj_chunks == 0b00111111 && c.fragments == CHUNK_SIZE * CHUNK_SIZE) {
-                let mut update_state = c.hot;
-
+            if c.adj_chunks == 0b00111111 && c.fragments == CHUNK_SIZE * CHUNK_SIZE {
+                let mut update_state = false;
                 if let ChunkState::Unmeshed = c.state {
                     update_state = true;
-                }
-                if update_state {
                     self.meshing_tx
                         .send(ToMeshing::ComputeChunkMesh(*pos, c.chunk.clone()))
                         .unwrap();
+                }
+                if update_state {
                     c.state = ChunkState::Meshing;
                 }
-                if c.hot {
-                    println!("Meshing hot chunk @ {:?}", pos);
-                }
-                c.hot = false;
             }
         }
     }
@@ -238,7 +210,6 @@ impl InputImpl {
         state.encoder.clear_depth(&state.data.out_depth, 1.0);
 
         // Render every chunk independently
-
         for (pos, chunk) in self.game_state.chunks.iter_mut() {
             if let ChunkState::Meshed(ref mut buff) = chunk.borrow_mut().state {
                 transform.model = Matrix4::new_translation(
