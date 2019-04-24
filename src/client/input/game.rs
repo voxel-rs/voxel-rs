@@ -140,9 +140,12 @@ impl InputImpl {
                 let mut update_state = false;
                 if let ChunkState::Unmeshed = c.state {
                     update_state = true;
+                }
+                if update_state || c.hot {
                     self.meshing_tx
                         .send(ToMeshing::ComputeChunkMesh(*pos, c.chunk.clone()))
                         .unwrap();
+                    c.hot = false; // Cool off
                 }
                 if update_state {
                     c.state = ChunkState::Meshing;
