@@ -90,7 +90,7 @@ impl InputImpl {
                 }
                 if let Some(c) = chunks.get(&pos) {
                     let mut adj_chunk = c.borrow_mut();
-                    if adj_chunk.adj_chunks & (1 << face) == 0 {
+                    if modified || adj_chunk.adj_chunks & (1 << face) == 0 {
                         adj_chunk.adj_chunks |= 1 << face;
                         // We update that adjacent chunk's sides with the current chunk !
                         Self::update_side(
