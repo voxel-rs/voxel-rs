@@ -261,6 +261,7 @@ impl ChunkPos {
         }
         maxcoord as u64
     }
+    /*
     pub fn get_adjacent(self) -> [ChunkPos; 6] {
         let x = self.0[0];
         let y = self.0[1];
@@ -274,6 +275,7 @@ impl ChunkPos {
             ChunkPos([x, y, z - 1])
         ]
     }
+    */
 }
 
 impl From<u16> for BlockId {
