@@ -14,7 +14,7 @@ pub mod messages {
 
         pub enum ToInput {
             NewChunkBuffer(ChunkPos, Vec<Vertex>),
-            NewChunkFragment(ChunkPos, FragmentPos, Box<ChunkFragment>, bool),
+            NewChunkFragment(ChunkPos, FragmentPos, Box<ChunkFragment>, u64),
             NewChunkInfo(ChunkPos, ChunkInfo),
             SetPos(PlayerPos),
         }
@@ -32,7 +32,7 @@ pub mod messages {
 
         #[derive(Serialize, Deserialize)]
         pub enum ToClient {
-            NewChunkFragment(ChunkPos, FragmentPos, Vec<u8>, bool),
+            NewChunkFragment(ChunkPos, FragmentPos, Vec<u8>, u64),
             NewChunkInfo(ChunkPos, ChunkInfo),
             SetPos(PlayerPos),
         }

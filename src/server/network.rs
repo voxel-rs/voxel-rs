@@ -111,7 +111,7 @@ where
                                                 pos.clone(),
                                                 crate::block::FragmentPos([cx, cy]),
                                                 serialize_fragment(&chunkz),
-                                                hot
+                                                chunk.get_version()
                                             ))
                                             .unwrap(),
                                         );

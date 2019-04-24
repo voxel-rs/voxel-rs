@@ -8,12 +8,19 @@ impl InputImpl {
     pub fn process_chunk_messages(&mut self) {
         for message in self.pending_messages.drain(..) {
             match message {
-                ToInput::NewChunkFragment(pos, fpos, frag, modified) => {
+                ToInput::NewChunkFragment(pos, fpos, frag, version) => {
                     if let Some(data) = self.game_state.chunks.get(&pos) {
                         let mut data = &mut *data.borrow_mut();
                         let index = fpos.0[0] * 32 + fpos.0[1];
                         // New fragment
                         let not_loaded = data.chunk_info[index / 32] & (1 << (index % 32)) == 0;
+
+                        let modified = data.current != version;
+
+                        if data.latest < version {
+                            data.latest = version;
+                            data.latest_fragments = 0;
+                        }
 
                         // If the chunk has been modified, mark it as hot
                         data.hot |= modified;
@@ -21,7 +28,16 @@ impl InputImpl {
                         if not_loaded || modified {
                             data.chunk_info[index / 32] |= 1 << (index % 32);
                             data.chunk.blocks[fpos.0[0]][fpos.0[1]] = *frag;
+
+                            // If a new fragment is being loaded in, increment that count
                             if not_loaded {data.fragments += 1;}
+                            if modified {data.latest_fragments += 1;}
+
+                            // If all fragments loaded in have been updated to the latest version, make it the current
+                            if data.latest_fragments == data.fragments {
+                                data.current = data.latest;
+                            }
+
                             // TODO: check that the chunk is in render_distance but NOT in (render_distance; rander_distance+1]
                             // Update adjacent chunks too
                             Self::check_finalize_chunk(
@@ -116,6 +132,9 @@ impl InputImpl {
                             RefCell::new(ChunkData {
                                 chunk: Chunk::new(),
                                 fragments: 0,
+                                latest : 0,
+                                latest_fragments : 0,
+                                current : 0,
                                 adj_chunks: 0,
                                 chunk_info: [0; CHUNK_SIZE * CHUNK_SIZE / 32],
                                 state: ChunkState::Unmeshed,

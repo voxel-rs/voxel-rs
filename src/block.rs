@@ -122,20 +122,27 @@ impl ChunkMap {
 pub enum ChunkState {
     Generating,
     Generated(Box<ChunkArray>),
-    Modified(Box<ChunkArray>)
+    Modified(Box<ChunkArray>, u64)
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum ChunkContents {
     Generated(Box<ChunkArray>),
-    Modified(Box<ChunkArray>)
+    Modified(Box<ChunkArray>, u64)
 }
 
 impl ChunkContents {
 
     pub fn iter(&self) -> impl Iterator<Item = &[ChunkFragment; CHUNK_SIZE]> {
         match self {
-            ChunkContents::Generated(ref c) | ChunkContents::Modified(ref c) => c.iter()
+            ChunkContents::Generated(ref c) | ChunkContents::Modified(ref c, _) => c.iter()
+        }
+    }
+
+    pub fn get_version(&self) -> u64 {
+        match self {
+            ChunkContents::Modified(_, v) => *v,
+            _ => 0
         }
     }
 
@@ -146,7 +153,7 @@ impl From<ChunkContents> for ChunkState {
     fn from(status : ChunkContents) -> ChunkState {
         match status {
             ChunkContents::Generated(c) => ChunkState::Generated(c),
-            ChunkContents::Modified(c) => ChunkState::Modified(c)
+            ChunkContents::Modified(c, v) => ChunkState::Modified(c, v)
         }
     }
 
@@ -158,7 +165,7 @@ impl From<ChunkState> for Option<ChunkContents> {
         match state {
             ChunkState::Generating => None,
             ChunkState::Generated(c) => Some(ChunkContents::Generated(c)),
-            ChunkState::Modified(c) => Some(ChunkContents::Modified(c))
+            ChunkState::Modified(c, v) => Some(ChunkContents::Modified(c, v))
         }
     }
 
@@ -168,22 +175,22 @@ impl ChunkState {
 
     pub fn is_modified(&self) -> bool {
         match self {
-            ChunkState::Modified(_) => true,
+            ChunkState::Modified(_, _) => true,
             _ => false
         }
     }
 
     pub fn set(&mut self, block : BlockId, i_pos : InnerChunkPos) {
-        match self {
+        let (arr, v) = match self {
             ChunkState::Generating => panic!("Can't spawn in chunk yet to be generated!"),
-            ChunkState::Generated(ref mut arr) | ChunkState::Modified(ref mut arr) => {
-                let x = i_pos.0[0] as usize;
-                let y = i_pos.0[1] as usize;
-                let z = i_pos.0[2] as usize;
-                arr[x][y][z] = block;
-                *self = ChunkState::Modified(arr.clone());
-            }
+            ChunkState::Generated(ref mut arr) => (arr, 0),
+            ChunkState::Modified(ref mut arr, v) => (arr, *v)
         };
+        let x = i_pos.0[0] as usize;
+        let y = i_pos.0[1] as usize;
+        let z = i_pos.0[2] as usize;
+        arr[x][y][z] = block;
+        *self = ChunkState::Modified(arr.clone(), v + 1);
     }
 
 }
