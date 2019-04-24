@@ -14,7 +14,7 @@ pub mod messages {
 
         pub enum ToInput {
             NewChunkBuffer(ChunkPos, Vec<Vertex>),
-            NewChunkFragment(ChunkPos, FragmentPos, Box<ChunkFragment>),
+            NewChunkFragment(ChunkPos, FragmentPos, Box<ChunkFragment>, u64),
             NewChunkInfo(ChunkPos, ChunkInfo),
             SetPos(PlayerPos),
         }
@@ -32,7 +32,7 @@ pub mod messages {
 
         #[derive(Serialize, Deserialize)]
         pub enum ToClient {
-            NewChunkFragment(ChunkPos, FragmentPos, Vec<u8>),
+            NewChunkFragment(ChunkPos, FragmentPos, Vec<u8>, u64),
             NewChunkInfo(ChunkPos, ChunkInfo),
             SetPos(PlayerPos),
         }
@@ -46,19 +46,20 @@ pub mod messages {
 
     /// Server-to-server messages.
     pub mod server {
-        use crate::block::{ChunkArray, ChunkPos};
+        use crate::block::ChunkContents;
+        use crate::block::ChunkPos;
         use crate::network::ConnectionId;
         use crate::player::{PlayerInput, PlayerPos};
 
         pub enum ToNetwork {
-            NewChunk(ConnectionId, ChunkPos, Box<ChunkArray>),
+            NewChunk(ConnectionId, ChunkPos, ChunkContents, bool),
             SetPos(ConnectionId, PlayerPos),
         }
 
         #[derive(Debug)]
         pub enum ToGame {
             PlayerEvent(ConnectionId, ToGamePlayer),
-            NewChunk(ChunkPos, Box<ChunkArray>),
+            NewChunk(ChunkPos, ChunkContents, bool),
         }
 
         #[derive(Debug)]

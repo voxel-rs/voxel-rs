@@ -1,10 +1,11 @@
 //! The game thread is the main server thread. It is authoritative over the game.
 
+use crate::block::ChunkContents;
 use crate::block::{ChunkMap, ChunkPos, ChunkState};
 use crate::config::Config;
 use crate::core::messages::server::{ToGame, ToNetwork, ToWorldgen};
 use crate::network::ConnectionId;
-use crate::player::Player;
+use crate::player::{Player, PlayerControls};
 use crate::util::Ticker;
 use std::collections::HashMap;
 use std::sync::mpsc::{Receiver, Sender};
@@ -50,7 +51,7 @@ impl GameImpl {
             rx,
             network_tx,
             worldgen_tx,
-            chunks: HashMap::new(),
+            chunks: ChunkMap::new(),
             players: HashMap::new(),
             last_tick: Instant::now(),
             last_update: Ticker::from_tick_rate(60),
@@ -80,7 +81,7 @@ impl GameImpl {
                             pitch: 0.0,
                             render_distance: 0,
                             chunks: HashMap::new(),
-                            keys: 0,
+                            keys: PlayerControls::none(),
                         },
                     );
                 }
@@ -92,9 +93,9 @@ impl GameImpl {
                     self.players.get_mut(&id).unwrap().render_distance = render_distance
                 }
             },
-            ToGame::NewChunk(pos, c) => {
+            ToGame::NewChunk(pos, s, _) => {
                 if let Some(state) = self.chunks.get_mut(&pos) {
-                    *state = ChunkState::Generated(c);
+                    *state = s.into();
                 }
             }
         }
@@ -107,7 +108,7 @@ impl GameImpl {
         let dt = dt.subsec_nanos() as f64 / 1_000_000_000.0;
 
         for (_, p) in &mut self.players {
-            p.tick(dt, &self.config, &self.chunks);
+            p.tick(dt, &self.config, &mut self.chunks);
         }
     }
 
@@ -146,7 +147,9 @@ impl GameImpl {
                 use std::collections::hash_map::Entry;
                 let player_entry = player.chunks.entry(pos);
                 if let Entry::Occupied(_) = player_entry {
-                    continue;
+                    if !chunks.is_hot(&pos) {
+                        continue;
+                    }
                 }
 
                 // At this point, the player doesn't have the chunk.
@@ -158,15 +161,16 @@ impl GameImpl {
                             .send(ToWorldgen::GenerateChunk(pos))
                             .unwrap();
                     }
-                    Entry::Occupied(o) => match *o.get() {
-                        // Wait until generated
-                        ChunkState::Generating => (),
-                        // Send a copy of the chunk
-                        ChunkState::Generated(ref c) => {
-                            network_tx
-                                .send(ToNetwork::NewChunk(*id, pos, c.clone()))
-                                .unwrap();
-                            player_entry.or_insert(());
+                    Entry::Occupied(o) => {
+                        let contents : Option<ChunkContents> = o.get().clone().into();
+                        match contents {
+                            None => (),
+                            Some(c) => {
+                                network_tx
+                                    .send(ToNetwork::NewChunk(*id, pos, c, chunks.is_hot(&pos)))
+                                    .unwrap();
+                                player_entry.or_insert(());
+                            }
                         }
                     },
                 }
@@ -179,7 +183,9 @@ impl GameImpl {
         }
 
         // Remove chunks that are far from all players
-        chunks.retain(|pos, _| {
+
+        chunks.retain(|pos, chunk| {
+            if chunk.is_modified() {return true;}
             for (_, player) in players.iter() {
                 let p = player.get_pos();
                 if p.chunk_pos().orthogonal_dist(*pos) <= player.render_distance {
@@ -189,6 +195,7 @@ impl GameImpl {
             false
         });
 
+
         // Send physics updates
         if last_update.try_tick() {
             for (id, player) in players {
@@ -197,5 +204,8 @@ impl GameImpl {
                     .unwrap();
             }
         }
+
+        // Cool chunks
+        self.chunks.cool_all();
     }
 }

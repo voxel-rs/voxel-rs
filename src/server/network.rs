@@ -69,7 +69,7 @@ where
         // Internal messages
         while let Ok(message) = self.rx.try_recv() {
             let (queue, id) = match &message {
-                &ToNetwork::NewChunk(id, _, _) => {
+                &ToNetwork::NewChunk(id, _, _, _) => {
                     // Enqueue large message for later
                     (true, id)
                 }
@@ -96,21 +96,22 @@ where
             if queue.len() > 0 {
                 // Reply to 1 message
                 match queue.pop_front().unwrap() {
-                    ToNetwork::NewChunk(_, pos, chunk) => {
-                        //println!("[Server] Network: processing chunk @ {:?}", pos);
+                    ToNetwork::NewChunk(_, pos, chunk, hot) => {
+                        println!("[Server] Network: processing chunk @ {:?}", pos);
 
                         let mut info = [0; CHUNK_SIZE * CHUNK_SIZE / 32];
                         for (cx, chunkyz) in chunk.iter().enumerate() {
                             'yiter: for (cy, chunkz) in chunkyz.iter().enumerate() {
                                 for block in chunkz.iter() {
                                     // Only send the message if the ChunkFragment is not empty.
-                                    if block.0 != 0 {
+                                    if hot || (block.0 != 0) {
                                         self.server.send_message(
                                             *id,
                                             bincode::serialize(&ToClient::NewChunkFragment(
                                                 pos.clone(),
                                                 crate::block::FragmentPos([cx, cy]),
                                                 serialize_fragment(&chunkz),
+                                                chunk.get_version()
                                             ))
                                             .unwrap(),
                                         );

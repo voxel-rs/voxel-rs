@@ -4,6 +4,7 @@
 //! The `game` submodule is reponsible for chunk handling, rendering and meshing.
 //! The `input` submodule manages interactions between the player, this thread, and the other client side threads.
 
+use glutin::ElementState;
 use std;
 use std::cell::RefCell;
 use std::collections::{HashMap, VecDeque};
@@ -19,7 +20,7 @@ use gfx::Factory;
 use glutin::MouseCursor;
 
 use crate::block::{
-    create_block_air, create_block_cube, BlockRegistry, Chunk, ChunkInfo, ChunkPos, ChunkSidesArray,
+    create_block_air, create_block_cube, BlockRegistry, Chunk, ChunkInfo, ChunkPos,
 };
 use crate::config::{load_config, Config};
 use crate::core::messages::client::{ToInput, ToMeshing, ToNetwork};
@@ -106,6 +107,7 @@ struct InputState {
     pub keyboard_state: KeyboardState,
     pub camera: Camera,
     pub timer: Instant,
+    pub mouse_state : ElementState
 }
 
 /// Game-related state
@@ -143,8 +145,14 @@ type BufferHandle3D = (
 struct ChunkData {
     /// The chunk data itself
     pub chunk: Chunk,
-    /// How many fragments have been received
+    /// How many fragments are in the chunk
     pub fragments: usize,
+    /// Latest fragment version
+    pub latest : u64,
+    /// How many fragments have been received for the LATEST version
+    pub latest_fragments : usize,
+    /// Current fragment version
+    pub current : u64,
     /// What adjacent chunks are loaded. This is a bit mask, and 1 means loaded.
     /// All chunks loaded means that adj_chunks == 0b00111111
     pub adj_chunks: u8,
@@ -152,6 +160,8 @@ struct ChunkData {
     pub chunk_info: ChunkInfo,
     /// The chunk's state
     pub state: ChunkState,
+    /// Whether this chunk is hot, i.e. has been modified since last meshing
+    pub hot : bool
 }
 
 /// A client chunk's state
@@ -353,6 +363,7 @@ impl InputImpl {
                 keyboard_state: KeyboardState::new(),
                 camera: cam,
                 timer: Instant::now(),
+                mouse_state: ElementState::Released
             },
             game_state: ClientGameState {
                 chunks: HashMap::new(),

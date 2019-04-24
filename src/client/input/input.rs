@@ -1,4 +1,5 @@
 use super::ChunkState;
+use crate::player::{PlayerKey, PlayerControls};
 use super::*;
 use glutin::dpi::LogicalPosition;
 
@@ -44,11 +45,13 @@ impl InputImpl {
                         }
                     },
                     WindowEvent::MouseInput { button, state, .. } => {
-                        if button == MouseButton::Left && state == ElementState::Pressed {
+                        if button == MouseButton::Right && state == ElementState::Pressed {
                             println!("Player position: {:?}", self.input_state.camera.get_pos());
                             let player_chunk = self.input_state.camera.get_pos().chunk_pos();
                             let c = self.game_state.chunks.get(&player_chunk).unwrap().borrow();
                             println!("Player chunk: {:?} (fragment_count: {}, adj_chunks: {}, state: {:?})", player_chunk, c.fragments, c.adj_chunks, c.state);
+                        } else {
+                            self.input_state.mouse_state = state
                         }
                     },
                     _ => {},
@@ -76,7 +79,7 @@ impl InputImpl {
             match message {
                 ToInput::NewChunkBuffer(pos, vertices) => {
                     assert!(vertices.len() % 3 == 0); // Triangles should have 3 vertices
-                                                      //println!("Input: received vertex buffer @ {:?}", pos);
+                    println!("Input: received vertex buffer @ {:?}", pos);
                     if let Some(ref chunk) = self.game_state.chunks.get_mut(&pos) {
                         chunk.borrow_mut().state = ChunkState::Meshed(
                             self.rendering_state
@@ -118,14 +121,29 @@ impl InputImpl {
         if ticker.try_tick() {
             let keys = {
                 let ks = &input_state.keyboard_state;
-                let mut mask = 0;
-                mask |= ((ks.is_key_pressed(MOVE_FORWARD) as u8) << 0) as u8;
-                mask |= ((ks.is_key_pressed(MOVE_LEFT) as u8) << 1) as u8;
-                mask |= ((ks.is_key_pressed(MOVE_BACKWARD) as u8) << 2) as u8;
-                mask |= ((ks.is_key_pressed(MOVE_RIGHT) as u8) << 3) as u8;
-                mask |= ((ks.is_key_pressed(MOVE_UP) as u8) << 4) as u8;
-                mask |= ((ks.is_key_pressed(MOVE_DOWN) as u8) << 5) as u8;
-                mask |= ((ks.is_key_pressed(CONTROL) as u8) << 6) as u8;
+                let mut mask = PlayerControls::mouse(input_state.mouse_state);
+                if ks.is_key_pressed(MOVE_FORWARD) {
+                    mask |= PlayerKey::Forward.into()
+                }
+                if ks.is_key_pressed(MOVE_LEFT) {
+                    mask |= PlayerKey::Left.into()
+                }
+                if ks.is_key_pressed(MOVE_BACKWARD) {
+                    mask |= PlayerKey::Backward.into()
+                }
+                if ks.is_key_pressed(MOVE_RIGHT) {
+                    mask |= PlayerKey::Right.into()
+                }
+
+                if ks.is_key_pressed(MOVE_UP) {
+                    mask |= PlayerKey::Up.into()
+                }
+                if ks.is_key_pressed(MOVE_DOWN) {
+                    mask |= PlayerKey::Down.into()
+                }
+                if ks.is_key_pressed(CONTROL) {
+                    mask |= PlayerKey::Control.into()
+                }
                 mask
             };
             let yp = input_state.camera.get_yaw_pitch();
