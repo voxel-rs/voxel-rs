@@ -2,7 +2,8 @@
 //! It it used to offload computation-intensive operations from the input thread.
 
 use crate::{
-    block::{BlockRegistry, Chunk},
+    block::{BlockRegistry},
+    sim::chunk::Chunk,
     core::messages::client::{ToInput, ToMeshing},
     CHUNK_SIZE,
 };

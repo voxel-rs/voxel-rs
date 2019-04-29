@@ -2,7 +2,8 @@
 
 use glutin::ElementState;
 use std::ops::BitOrAssign;
-use crate::block::{ChunkMap, ChunkPos, InnerChunkPos, ChunkState, BlockId};
+use super::chunk::{ChunkMap, ChunkPos, InnerChunkPos, ChunkState};
+use crate::block::BlockId;
 use crate::config::Config;
 use nalgebra::Vector3;
 use serde_derive::{Deserialize, Serialize};

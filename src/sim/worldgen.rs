@@ -1,7 +1,8 @@
 //! The worldgen threads generates chunks.
 //! It it used to offload computation-intensive operations from the game thread.
 
-use crate::block::{BlockId, ChunkArray, ChunkPos, ChunkContents};
+use crate::block::BlockId;
+use super::chunk::{ChunkArray, ChunkPos, ChunkContents};
 use crate::core::messages::server::{ToGame, ToWorldgen};
 use crate::CHUNK_SIZE;
 

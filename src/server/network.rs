@@ -109,7 +109,7 @@ where
                                             *id,
                                             bincode::serialize(&ToClient::NewChunkFragment(
                                                 pos.clone(),
-                                                crate::block::FragmentPos([cx, cy]),
+                                                crate::sim::chunk::FragmentPos([cx, cy]),
                                                 serialize_fragment(&chunkz),
                                                 chunk.get_version()
                                             ))

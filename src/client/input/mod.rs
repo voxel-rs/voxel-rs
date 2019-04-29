@@ -20,7 +20,10 @@ use gfx::Factory;
 use glutin::MouseCursor;
 
 use crate::block::{
-    create_block_air, create_block_cube, BlockRegistry, Chunk, ChunkInfo, ChunkPos,
+    create_block_air, create_block_cube, BlockRegistry
+};
+use crate::sim::chunk::{
+    Chunk, ChunkInfo, ChunkPos
 };
 use crate::config::{load_config, Config};
 use crate::core::messages::client::{ToInput, ToMeshing, ToNetwork};

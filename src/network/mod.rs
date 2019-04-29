@@ -1,7 +1,8 @@
 //! Various network-related utilities.
 //! For now this means `ChunkFragment` serialization and deserialization.
 
-use crate::block::{BlockId, ChunkFragment};
+use crate::block::BlockId;
+use crate::sim::chunk::ChunkFragment;
 use crate::CHUNK_SIZE;
 
 /// A client-side network event

@@ -1,7 +1,6 @@
 //! The game thread is the main server thread. It is authoritative over the game.
 
-use crate::block::ChunkContents;
-use crate::block::{ChunkPos, ChunkState};
+use crate::sim::chunk::{ChunkContents, ChunkPos, ChunkState};
 use crate::config::Config;
 use crate::core::messages::server::{ToGame, ToNetwork, ToWorldgen};
 use crate::network::ConnectionId;

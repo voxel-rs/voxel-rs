@@ -1,7 +1,8 @@
 pub mod worldgen;
 pub mod player;
+pub mod chunk;
 
-use crate::block::ChunkMap;
+use self::chunk::ChunkMap;
 use self::player::PlayerSet;
 
 pub struct World {
