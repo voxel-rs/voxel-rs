@@ -23,9 +23,9 @@ use crate::block::{
     create_block_air, create_block_cube, BlockRegistry
 };
 use crate::sim::chunk::{
-    ChunkInfo, ChunkPos
+    ChunkPos
 };
-use self::chunk::Chunk;
+use self::chunk::{Chunk, ChunkData, ChunkState};
 use crate::config::{load_config, Config};
 use crate::core::messages::client::{ToInput, ToMeshing, ToNetwork};
 use crate::input::KeyboardState;
@@ -145,36 +145,6 @@ type BufferHandle3D = (
     gfx::handle::Buffer<gfx_device_gl::Resources, Vertex>,
     gfx::Slice<gfx_device_gl::Resources>,
 );
-
-/// Chunk information stored by the client
-struct ChunkData {
-    /// The chunk data itself
-    pub chunk: Chunk,
-    /// How many fragments are in the chunk
-    pub fragments: usize,
-    /// Latest fragment version
-    pub latest : u64,
-    /// How many fragments have been received for the LATEST version
-    pub latest_fragments : usize,
-    /// Current fragment version
-    pub current : u64,
-    /// What adjacent chunks are loaded. This is a bit mask, and 1 means loaded.
-    /// All chunks loaded means that adj_chunks == 0b00111111
-    pub adj_chunks: u8,
-    /// The loaded bits
-    pub chunk_info: ChunkInfo,
-    /// The chunk's state
-    pub state: ChunkState,
-    /// Whether this chunk is hot, i.e. has been modified since last meshing
-    pub hot : bool
-}
-
-/// A client chunk's state
-enum ChunkState {
-    Unmeshed,
-    Meshing,
-    Meshed(BufferHandle3D),
-}
 
 impl std::fmt::Debug for ChunkState {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {

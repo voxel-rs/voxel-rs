@@ -198,12 +198,6 @@ impl ChunkPos {
     */
 }
 
-
-/// Indicates what non-void ```ChunkFragment```s a Chunk contains.
-/// It is stored as 32-bit integers so that common functions are implemented.
-pub type ChunkInfo = [u32; CHUNK_SIZE * CHUNK_SIZE / 32];
-
-
 // TODO: Struct instead ?
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct ChunkPos(pub [i64; 3]);

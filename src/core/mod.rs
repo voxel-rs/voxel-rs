@@ -3,8 +3,8 @@
 pub mod messages {
     /// Client-to-client messages.
     pub mod client {
-        use crate::sim::chunk::{ChunkFragment, ChunkInfo, ChunkPos, FragmentPos};
-        use crate::client::input::chunk::Chunk;
+        use crate::sim::chunk::{ChunkFragment, ChunkPos, FragmentPos};
+        use crate::client::input::chunk::{Chunk, ChunkInfo};
         use crate::sim::player::{PlayerInput, PlayerPos};
         use crate::Vertex;
 
@@ -27,8 +27,9 @@ pub mod messages {
 
     /// Client-to-server and server-to-client messages.
     pub mod network {
-        use crate::sim::chunk::{ChunkInfo, ChunkPos, FragmentPos};
+        use crate::sim::chunk::{ChunkPos, FragmentPos};
         use crate::sim::player::{PlayerInput, PlayerPos};
+        use crate::client::input::chunk::{ChunkInfo};
         use serde_derive::{Deserialize, Serialize};
 
         #[derive(Serialize, Deserialize)]

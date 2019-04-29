@@ -1,6 +1,6 @@
-use super::ChunkState;
 use crate::sim::player::{PlayerKey, PlayerControls};
 use super::*;
+use super::chunk::ChunkState;
 use glutin::dpi::LogicalPosition;
 
 impl InputImpl {
