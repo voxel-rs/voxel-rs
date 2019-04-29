@@ -4,11 +4,14 @@ use glutin::ElementState;
 use std::ops::BitOrAssign;
 use crate::block::{ChunkMap, ChunkPos, InnerChunkPos, ChunkState, BlockId};
 use crate::config::Config;
-use crate::sim::PlayerId;
 use nalgebra::Vector3;
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::ops::BitOr;
+
+mod player_set;
+pub use player_set::PlayerSet;
+pub use player_set::PlayerId;
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct PlayerPos(pub [f64; 3]);

@@ -1,7 +1,7 @@
 //! Camera.
 
 use crate::config::Config;
-use crate::player::PlayerPos;
+use crate::sim::player::PlayerPos;
 use nalgebra::{Matrix4, Perspective3, Vector3};
 
 // TODO: Don't hardcode this

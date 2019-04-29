@@ -25,7 +25,7 @@ use crate::block::{
 use crate::config::{load_config, Config};
 use crate::core::messages::client::{ToInput, ToMeshing, ToNetwork};
 use crate::input::KeyboardState;
-use crate::player::PlayerInput;
+use crate::sim::player::PlayerInput;
 use crate::render::camera::*;
 use crate::render::frames::FrameCounter;
 use crate::texture::load_textures;

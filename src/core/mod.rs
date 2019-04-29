@@ -4,7 +4,7 @@ pub mod messages {
     /// Client-to-client messages.
     pub mod client {
         use crate::block::{Chunk, ChunkFragment, ChunkInfo, ChunkPos, FragmentPos};
-        use crate::player::{PlayerInput, PlayerPos};
+        use crate::sim::player::{PlayerInput, PlayerPos};
         use crate::Vertex;
 
         pub enum ToNetwork {
@@ -27,7 +27,7 @@ pub mod messages {
     /// Client-to-server and server-to-client messages.
     pub mod network {
         use crate::block::{ChunkInfo, ChunkPos, FragmentPos};
-        use crate::player::{PlayerInput, PlayerPos};
+        use crate::sim::player::{PlayerInput, PlayerPos};
         use serde_derive::{Deserialize, Serialize};
 
         #[derive(Serialize, Deserialize)]
@@ -49,7 +49,7 @@ pub mod messages {
         use crate::block::ChunkContents;
         use crate::block::ChunkPos;
         use crate::network::ConnectionId;
-        use crate::player::{PlayerInput, PlayerPos};
+        use crate::sim::player::{PlayerInput, PlayerPos};
 
         pub enum ToNetwork {
             NewChunk(ConnectionId, ChunkPos, ChunkContents, bool),

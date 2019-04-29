@@ -1,5 +1,5 @@
 use super::ChunkState;
-use crate::player::{PlayerKey, PlayerControls};
+use crate::sim::player::{PlayerKey, PlayerControls};
 use super::*;
 use glutin::dpi::LogicalPosition;
 
