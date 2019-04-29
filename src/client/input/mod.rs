@@ -23,8 +23,9 @@ use crate::block::{
     create_block_air, create_block_cube, BlockRegistry
 };
 use crate::sim::chunk::{
-    Chunk, ChunkInfo, ChunkPos
+    ChunkInfo, ChunkPos
 };
+use self::chunk::Chunk;
 use crate::config::{load_config, Config};
 use crate::core::messages::client::{ToInput, ToMeshing, ToNetwork};
 use crate::input::KeyboardState;
@@ -38,6 +39,7 @@ use crate::{pipe, ColorFormat, DepthFormat, PlayerData, Transform, Vertex, CHUNK
 
 mod game;
 mod input;
+pub mod chunk;
 
 type PipeDataType = pipe::Data<gfx_device_gl::Resources>;
 type PsoType = gfx::PipelineState<gfx_device_gl::Resources, pipe::Meta>;

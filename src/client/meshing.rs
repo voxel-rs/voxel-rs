@@ -3,10 +3,10 @@
 
 use crate::{
     block::{BlockRegistry},
-    sim::chunk::Chunk,
     core::messages::client::{ToInput, ToMeshing},
     CHUNK_SIZE,
 };
+use super::input::chunk::Chunk;
 use std::sync::{
     mpsc::{Receiver, Sender},
     Arc,

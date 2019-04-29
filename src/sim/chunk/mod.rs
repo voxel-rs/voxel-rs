@@ -1,13 +1,12 @@
-use crate::block::{BlockId, BlockRegistry};
+use crate::block::BlockId;
 use std::collections::hash_map::Entry;
-use crate::{Vertex, CHUNK_SIZE};
+use crate::CHUNK_SIZE;
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 pub type BlockData = BlockId;
 pub type ChunkFragment = [BlockData; CHUNK_SIZE];
 pub type ChunkArray = [[ChunkFragment; CHUNK_SIZE]; CHUNK_SIZE];
-pub type ChunkSidesArray = [[[u8; CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE];
 
 #[derive(Debug, Copy, Clone)]
 pub struct InnerChunkPos([u8; 3]);
@@ -205,47 +204,9 @@ impl ChunkPos {
 pub type ChunkInfo = [u32; CHUNK_SIZE * CHUNK_SIZE / 32];
 
 
-/// Chunk type
-#[derive(Clone, Debug)]
-pub struct Chunk {
-    /// Blocks in the chunk
-    pub blocks: Box<ChunkArray>,
-    /// Empty blocks adjacent to the chunk (1 is for non-opaque, 0 is for opaque)
-    pub sides: Box<ChunkSidesArray>,
-}
-
 // TODO: Struct instead ?
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct ChunkPos(pub [i64; 3]);
 
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct FragmentPos(pub [usize; 2]);
-
-
-impl Chunk {
-    pub fn new() -> Chunk {
-        Chunk {
-            blocks: Box::new([[[BlockId(0); CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE]),
-            sides: Box::new([[[0b00000000; CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE]),
-        }
-    }
-
-    pub fn calculate_mesh(&self, blocks: &BlockRegistry) -> Vec<Vertex> {
-        let mut vec: Vec<Vertex> = Vec::new();
-        for i in 0..CHUNK_SIZE {
-            for j in 0..CHUNK_SIZE {
-                for k in 0..CHUNK_SIZE {
-                    // Don't render hidden blocks
-                    if self.sides[i][j][k] != 0xFF {
-                        blocks.get_block(self.blocks[i][j][k]).render(
-                            &mut vec,
-                            self.sides[i][j][k],
-                            [i as u64, j as u64, k as u64],
-                        );
-                    }
-                }
-            }
-        }
-        vec
-    }
-}
