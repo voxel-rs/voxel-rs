@@ -10,7 +10,7 @@ impl InputImpl {
             match message {
                 ToInput::NewChunkFragment(pos, fpos, frag, version) => {
                     if let Some(data) = self.game_state.chunks.get(&pos) {
-                        let mut data = &mut *data.borrow_mut();
+                        let data = &mut *data.borrow_mut();
                         let index = fpos.0[0] * 32 + fpos.0[1];
                         // New fragment
                         let not_loaded = data.chunk_info[index / 32] & (1 << (index % 32)) == 0;

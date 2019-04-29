@@ -79,7 +79,7 @@ impl InputImpl {
             match message {
                 ToInput::NewChunkBuffer(pos, vertices) => {
                     assert!(vertices.len() % 3 == 0); // Triangles should have 3 vertices
-                    println!("Input: received vertex buffer @ {:?}", pos);
+                    //println!("Input: received vertex buffer @ {:?}", pos);
                     if let Some(ref chunk) = self.game_state.chunks.get_mut(&pos) {
                         chunk.borrow_mut().state = ChunkState::Meshed(
                             self.rendering_state

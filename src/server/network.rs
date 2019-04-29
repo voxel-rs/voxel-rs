@@ -97,7 +97,7 @@ where
                 // Reply to 1 message
                 match queue.pop_front().unwrap() {
                     ToNetwork::NewChunk(_, pos, chunk, hot) => {
-                        println!("[Server] Network: processing chunk @ {:?}", pos);
+                        //println!("[Server] Network: processing chunk @ {:?}", pos);
 
                         let mut info = [0; CHUNK_SIZE * CHUNK_SIZE / 32];
                         for (cx, chunkyz) in chunk.iter().enumerate() {
