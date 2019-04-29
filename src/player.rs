@@ -4,7 +4,7 @@ use glutin::ElementState;
 use std::ops::BitOrAssign;
 use crate::block::{ChunkMap, ChunkPos, InnerChunkPos, ChunkState, BlockId};
 use crate::config::Config;
-use crate::server::world::PlayerId;
+use crate::sim::PlayerId;
 use nalgebra::Vector3;
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;

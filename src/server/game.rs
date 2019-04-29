@@ -6,7 +6,7 @@ use crate::config::Config;
 use crate::core::messages::server::{ToGame, ToNetwork, ToWorldgen};
 use crate::network::ConnectionId;
 use crate::util::Ticker;
-use crate::server::world::{World, PlayerId};
+use crate::sim::{World, PlayerId};
 use std::collections::HashMap;
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::Arc;

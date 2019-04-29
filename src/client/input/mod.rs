@@ -308,7 +308,7 @@ impl InputImpl {
                 });
 
                 thread::spawn(move || {
-                    crate::server::world::worldgen::start(worldgen_rx, game_tx);
+                    crate::sim::worldgen::start(worldgen_rx, game_tx);
                 });
             }
 

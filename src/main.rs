@@ -47,6 +47,7 @@ mod server;
 mod simple;
 mod texture;
 mod util;
+mod sim;
 
 fn main() {
     client::input::start();
