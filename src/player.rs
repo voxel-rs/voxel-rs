@@ -4,6 +4,7 @@ use glutin::ElementState;
 use std::ops::BitOrAssign;
 use crate::block::{ChunkMap, ChunkPos, InnerChunkPos, ChunkState, BlockId};
 use crate::config::Config;
+use crate::server::world::PlayerId;
 use nalgebra::Vector3;
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -99,15 +100,36 @@ pub struct Player {
     pub render_distance: u64,
     pub chunks: HashMap<ChunkPos, ()>,
     pub keys: PlayerControls,
+    // Player ID
+    pub id: PlayerId,
+    // Whether this player is active
+    pub active : bool
 }
 
 impl Player {
+
+    pub fn new(id : PlayerId, pos : Vector3<f64>, active : bool) -> Player {
+        Player {
+            pos: pos,
+            yaw: 0.0,
+            pitch: 0.0,
+            render_distance: 0,
+            chunks: HashMap::new(),
+            keys: PlayerControls::none(),
+            id : id,
+            active : active
+        }
+    }
 
     fn handle_hit(&mut self, _dt: f64, _config: &Config, world: &mut ChunkMap) {
         world.set(self.get_pos().chunk_pos(), self.get_pos().inner_chunk_pos(), BlockId::from(0))
     }
 
     pub fn tick(&mut self, dt: f64, config: &Config, world: &mut ChunkMap) {
+
+        // Don't tick inactive players
+        if !self.active {return;}
+
         let mut speedup = 1.0;
         if self.keys.pressed(PlayerKey::Control) {
             speedup = config.ctrl_speedup;
