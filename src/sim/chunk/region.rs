@@ -54,6 +54,55 @@ impl RegionMap {
         id
     }
 
+    pub fn get_id(&self, pos : RegionPos) -> Option<RegionID> {
+        self.coord_map.get(&pos).cloned()
+    }
+
+    pub fn get(&self, pos : RegionPos) -> Option<&Region> {
+        if let Some(id) = self.get_id(pos) {
+            Some(&self[id])
+        } else {
+            None
+        }
+    }
+
+    pub fn get_mut(&mut self, pos : RegionPos) -> Option<&mut Region> {
+        if let Some(id) = self.get_id(pos) {
+            Some(&mut self[id])
+        } else {
+            None
+        }
+    }
+
+}
+
+impl Index<RegionID> for RegionMap {
+    type Output = Region;
+
+    fn index(&self, id : RegionID) -> &Region {
+        &self.regions[id.idx]
+    }
+}
+
+impl IndexMut<RegionID> for RegionMap {
+    fn index_mut(&mut self, id : RegionID) -> &mut Region {
+        &mut self.regions[id.idx]
+    }
+}
+
+impl Index<RegionPos> for RegionMap {
+    type Output = Region;
+
+    fn index(&self, pos : RegionPos) -> &Region {
+        &self[*self.coord_map.get(&pos).unwrap()]
+    }
+}
+
+impl IndexMut<RegionPos> for RegionMap {
+    fn index_mut(&mut self, pos : RegionPos) -> &mut Region {
+        let id = *self.coord_map.get(&pos).unwrap();
+        &mut self[id]
+    }
 }
 
 // A region's ID
