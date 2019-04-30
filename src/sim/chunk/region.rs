@@ -177,6 +177,23 @@ impl IndexMut<usize> for RegionPos {
     }
 }
 
+impl Index<usize> for InnerRegPos {
+    type Output = usize;
+
+    fn index(&self, idx : usize) -> &usize {
+        let InnerRegPos(arr) = self;
+        &arr[idx]
+    }
+}
+
+impl IndexMut<usize> for InnerRegPos {
+    fn index_mut(&mut self, idx : usize) -> &mut usize {
+        let InnerRegPos(arr) = self;
+        &mut arr[idx]
+    }
+}
+
+
 impl Add for RegionPos {
     type Output = RegionPos;
 
@@ -210,6 +227,22 @@ impl Region {
             position : pos,
             id : id
         }
+    }
+
+}
+
+impl Index<InnerRegPos> for Region {
+    type Output = RegionChunkState;
+
+    fn index(&self, pos : InnerRegPos) -> &RegionChunkState {
+        &self.chunks[pos[0]][pos[1]][pos[2]]
+    }
+}
+
+impl IndexMut<InnerRegPos> for Region {
+
+    fn index_mut(&mut self, pos : InnerRegPos) -> &mut RegionChunkState {
+        &mut self.chunks[pos[0]][pos[1]][pos[2]]
     }
 
 }
