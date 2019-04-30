@@ -1,3 +1,6 @@
+use std::ops::Add;
+use std::ops::IndexMut;
+use std::ops::Index;
 use crate::block::BlockId;
 use std::collections::hash_map::Entry;
 use crate::CHUNK_SIZE;
@@ -199,6 +202,42 @@ impl ChunkPos {
     }
     */
 }
+
+impl From<[i64; 3]> for ChunkPos {
+    fn from(pos : [i64; 3]) -> ChunkPos {
+        ChunkPos(pos)
+    }
+}
+
+impl Index<usize> for ChunkPos {
+    type Output = i64;
+
+    fn index(&self, idx : usize) -> &i64 {
+        let ChunkPos(arr) = self;
+        &arr[idx]
+    }
+}
+
+impl IndexMut<usize> for ChunkPos {
+    fn index_mut(&mut self, idx : usize) -> &mut i64 {
+        let ChunkPos(arr) = self;
+        &mut arr[idx]
+    }
+}
+
+
+impl Add for ChunkPos {
+    type Output = ChunkPos;
+
+    fn add(self, other : ChunkPos) -> ChunkPos {
+        [
+            self[0] + other[0],
+            self[1] + other[1],
+            self[2] + other[2]
+        ].into()
+    }
+}
+
 
 // TODO: Struct instead ?
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]

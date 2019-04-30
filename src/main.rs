@@ -1,5 +1,6 @@
 #[macro_use]
 extern crate gfx;
+extern crate num;
 
 // MUST BE A MULTIPLE OF 8 !
 const CHUNK_SIZE: usize = 32;

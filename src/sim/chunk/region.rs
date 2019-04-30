@@ -17,6 +17,9 @@ use std::collections::HashMap;
 use std::ops::Add;
 use std::ops::Index;
 use std::ops::IndexMut;
+use num::Integer;
+
+use super::ChunkPos;
 
 pub const REGION_SIZE : usize = 8;
 
@@ -153,11 +156,22 @@ impl RegionPos {
         ]
     }
 
+    pub fn from_chunk(pos : ChunkPos) -> RegionPos {
+        let sz = REGION_SIZE as i64;
+        [pos[0].div_floor(&sz), pos[1].div_floor(&sz), pos[2].div_floor(&sz)].into()
+    }
+
 }
 
 impl From<[i64; 3]> for RegionPos {
     fn from(pos : [i64; 3]) -> RegionPos {
         RegionPos(pos)
+    }
+}
+
+impl From<[usize; 3]> for InnerRegPos {
+    fn from(pos : [usize; 3]) -> InnerRegPos {
+        InnerRegPos(pos)
     }
 }
 
@@ -175,6 +189,25 @@ impl IndexMut<usize> for RegionPos {
         let RegionPos(arr) = self;
         &mut arr[idx]
     }
+}
+
+impl InnerRegPos {
+
+    // Euclidean mod
+    fn em(pos : i64) -> usize {
+        let fl = pos.mod_floor(&(REGION_SIZE as i64));
+        (if fl >= 0 {
+            fl
+        } else {
+            fl + REGION_SIZE as i64
+        } as usize)
+    }
+
+    pub fn from_chunk(pos : ChunkPos) -> InnerRegPos {
+        [Self::em(pos[0]), Self::em(pos[1]), Self::em(pos[2])]
+        .into()
+    }
+
 }
 
 impl Index<usize> for InnerRegPos {
