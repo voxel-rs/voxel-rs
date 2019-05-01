@@ -83,16 +83,9 @@ impl ChunkMap {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum ChunkState {
-    Ungenerated,
     Generating,
     Generated(Box<ChunkArray>),
     Modified(Box<ChunkArray>, u64)
-}
-
-impl Default for ChunkState {
-    fn default() -> ChunkState {
-        ChunkState::Ungenerated
-    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -134,7 +127,7 @@ impl From<ChunkState> for Option<ChunkContents> {
 
     fn from(state : ChunkState) -> Option<ChunkContents> {
         match state {
-            ChunkState::Generating | ChunkState::Ungenerated => None,
+            ChunkState::Generating => None,
             ChunkState::Generated(c) => Some(ChunkContents::Generated(c)),
             ChunkState::Modified(c, v) => Some(ChunkContents::Modified(c, v))
         }
@@ -161,8 +154,7 @@ impl ChunkState {
 
     pub fn set(&mut self, block : BlockId, i_pos : InnerChunkPos) {
         let (arr, v) = match self {
-            ChunkState::Generating | ChunkState::Ungenerated
-            => panic!("Can't spawn in chunk yet to be generated!"),
+            ChunkState::Generating => panic!("Can't spawn in chunk yet to be generated!"),
             ChunkState::Generated(ref mut arr) => (arr, 0),
             ChunkState::Modified(ref mut arr, v) => (arr, *v)
         };
