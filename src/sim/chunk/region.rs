@@ -13,6 +13,8 @@
 
 //use super::ChunkState;
 
+/*
+
 use std::collections::HashMap;
 use std::ops::Add;
 use std::ops::Index;
@@ -279,3 +281,5 @@ impl IndexMut<InnerRegPos> for Region {
     }
 
 }
+
+*/
