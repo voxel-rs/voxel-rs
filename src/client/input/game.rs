@@ -50,10 +50,11 @@ impl InputImpl {
                         }
                     }
                 }
-                ToInput::NewChunkInfo(pos, info) => {
+                ToInput::NewChunkInfo(pos, info, _) => {
                     if let Some(data) = self.game_state.chunks.get(&pos) {
                         let mut data = &mut *data.borrow_mut();
-                        for (from, to) in info.iter().zip(data.chunk_info.iter_mut()) {
+                        for (i, (from, to)) in info.iter().zip(data.chunk_info.iter_mut()).enumerate( ) {
+                            //TODO: fix bug with zeroed fragments...
                             data.fragments -= to.count_ones() as usize;
                             *to |= *from;
                             data.fragments += to.count_ones() as usize;

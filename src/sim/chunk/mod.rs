@@ -37,16 +37,14 @@ impl InnerChunkPos {
 }
 
 pub struct ChunkMap{
-    map : HashMap<ChunkPos, ChunkState>,
-    hot : HashMap<ChunkPos, ()>
+    map : HashMap<ChunkPos, ChunkState>
 }
 
 impl ChunkMap {
 
     pub fn new() -> ChunkMap {
         ChunkMap {
-            map : HashMap::new(),
-            hot : HashMap::new()
+            map : HashMap::new()
         }
     }
 
@@ -66,34 +64,17 @@ impl ChunkMap {
         self.map.retain(f)
     }
 
-    pub fn is_hot(&self, pos : &ChunkPos) -> bool {
-        self.hot.get(pos) != None
-    }
-
-    pub fn heat(&mut self, pos : ChunkPos) {
-        self.hot.insert(pos, ());
-    }
-
-    pub fn cool_all(&mut self) {
-        self.hot.clear()
-    }
-
     pub fn contains_key(&self, pos : &ChunkPos) -> bool {
         return self.map.contains_key(pos);
     }
 
     pub fn set(&mut self, pos : ChunkPos, i_pos : InnerChunkPos, block : BlockId) {
-        let mut heated = false;
         match self.get_mut(&pos) {
             None => {print!("Failed to set {:?} : {:?} to {:?}!\n", pos, i_pos, block);},
             Some(ref mut state) => {
                 print!("Setting {:?} : {:?} to {:?}!\n", pos, i_pos, block);
                 state.set(block, i_pos);
-                heated = true;
             }
-        }
-        if heated {
-            self.heat(pos);
         }
 
     }
@@ -160,6 +141,14 @@ impl ChunkState {
         match self {
             ChunkState::Modified(_, _) => true,
             _ => false
+        }
+    }
+
+    pub fn get_version(&self) -> Option<u64> {
+        match self {
+            ChunkState::Modified(_, v) => Some(*v),
+            ChunkState::Generated(_) => Some(0),
+            ChunkState::Generating => None
         }
     }
 

@@ -16,7 +16,7 @@ pub mod messages {
         pub enum ToInput {
             NewChunkBuffer(ChunkPos, Vec<Vertex>),
             NewChunkFragment(ChunkPos, FragmentPos, Box<ChunkFragment>, u64),
-            NewChunkInfo(ChunkPos, ChunkInfo),
+            NewChunkInfo(ChunkPos, ChunkInfo, u64),
             SetPos(PlayerPos),
         }
 
@@ -35,7 +35,7 @@ pub mod messages {
         #[derive(Serialize, Deserialize)]
         pub enum ToClient {
             NewChunkFragment(ChunkPos, FragmentPos, Vec<u8>, u64),
-            NewChunkInfo(ChunkPos, ChunkInfo),
+            NewChunkInfo(ChunkPos, ChunkInfo, u64),
             SetPos(PlayerPos),
         }
 
@@ -53,7 +53,7 @@ pub mod messages {
         use crate::sim::player::{PlayerInput, PlayerPos};
 
         pub enum ToNetwork {
-            NewChunk(ConnectionId, ChunkPos, ChunkContents, bool),
+            NewChunk(ConnectionId, ChunkPos, ChunkContents),
             SetPos(ConnectionId, PlayerPos),
         }
 

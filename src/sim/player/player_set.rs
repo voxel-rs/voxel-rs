@@ -5,9 +5,11 @@ use nalgebra::Vector3;
 use std::ops::Index;
 use std::ops::IndexMut;
 
-#[derive(Debug, Copy, Clone)]
+use serde_derive::{Serialize, Deserialize};
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub struct PlayerId {
-    pub(self) idx : usize
+    pub(self) idx : u32
 }
 
 pub struct PlayerSet {
@@ -31,7 +33,7 @@ impl PlayerSet {
     */
 
     pub fn new_player(&mut self, pos : Vector3<f64>, active : bool) -> PlayerId {
-        let new_id = PlayerId{ idx : self.players.len() };
+        let new_id = PlayerId{ idx : self.players.len() as u32 };
         self.players.push(Player::new(new_id, pos, active));
         new_id
     }
@@ -56,12 +58,12 @@ impl Index<PlayerId> for PlayerSet {
     type Output = Player;
 
     fn index(&self, id : PlayerId) -> &Player {
-        &self.players[id.idx]
+        &self.players[id.idx as usize]
     }
 }
 
 impl IndexMut<PlayerId> for PlayerSet {
     fn index_mut(&mut self, id : PlayerId) -> &mut Player {
-        &mut self.players[id.idx]
+        &mut self.players[id.idx as usize]
     }
 }
