@@ -19,20 +19,9 @@ use std::ops::Index;
 use std::ops::IndexMut;
 use num::Integer;
 
-use super::ChunkPos;
+use super::{ChunkPos, ChunkState};
 
 pub const REGION_SIZE : usize = 8;
-
-//TODO
-pub enum RegionChunkState {
-    Ungenerated
-}
-
-impl Default for RegionChunkState {
-    fn default() -> RegionChunkState {
-        RegionChunkState::Ungenerated
-    }
-}
 
 pub struct RegionMap {
     regions : Vec<Region>,
@@ -240,7 +229,7 @@ impl Add for RegionPos {
 }
 
 pub struct Region {
-    chunks : [[[RegionChunkState; REGION_SIZE]; REGION_SIZE]; REGION_SIZE],
+    chunks : [[[ChunkState; REGION_SIZE]; REGION_SIZE]; REGION_SIZE],
     modified : u16, // Modified chunk count
     generated : u16, // Generated chunk count
     pub(self) neighbors : [Option<RegionID>; 26],
@@ -265,16 +254,16 @@ impl Region {
 }
 
 impl Index<InnerRegPos> for Region {
-    type Output = RegionChunkState;
+    type Output = ChunkState;
 
-    fn index(&self, pos : InnerRegPos) -> &RegionChunkState {
+    fn index(&self, pos : InnerRegPos) -> &ChunkState {
         &self.chunks[pos[0]][pos[1]][pos[2]]
     }
 }
 
 impl IndexMut<InnerRegPos> for Region {
 
-    fn index_mut(&mut self, pos : InnerRegPos) -> &mut RegionChunkState {
+    fn index_mut(&mut self, pos : InnerRegPos) -> &mut ChunkState {
         &mut self.chunks[pos[0]][pos[1]][pos[2]]
     }
 
