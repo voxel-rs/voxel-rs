@@ -5,7 +5,7 @@ use crate::block::BlockId;
 use std::collections::hash_map::Entry;
 use crate::CHUNK_SIZE;
 use serde_derive::{Deserialize, Serialize};
-use std::collections::HashMap;
+use fnv::FnvHashMap;
 
 pub type BlockData = BlockId;
 pub type ChunkFragment = [BlockData; CHUNK_SIZE];
@@ -37,14 +37,14 @@ impl InnerChunkPos {
 }
 
 pub struct ChunkMap{
-    map : HashMap<ChunkPos, ChunkState>
+    map : FnvHashMap<ChunkPos, ChunkState>
 }
 
 impl ChunkMap {
 
     pub fn new() -> ChunkMap {
         ChunkMap {
-            map : HashMap::new()
+            map : FnvHashMap::default()
         }
     }
 

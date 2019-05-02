@@ -6,7 +6,7 @@ use crate::core::messages::server::{ToGame, ToNetwork, ToWorldgen};
 use crate::network::ConnectionId;
 use crate::util::Ticker;
 use crate::sim::{World, player::PlayerId};
-use std::collections::HashMap;
+use fnv::FnvHashMap;
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::Arc;
 use std::time::Instant;
@@ -33,8 +33,8 @@ struct GameImpl {
     network_tx: Sender<ToNetwork>,
     worldgen_tx: Sender<ToWorldgen>,
     world: World,
-    connections: HashMap<ConnectionId, PlayerId>,
-    player_chunks : HashMap<PlayerId, HashMap<ChunkPos, u64>>,
+    connections: FnvHashMap<ConnectionId, PlayerId>,
+    player_chunks : FnvHashMap<PlayerId, FnvHashMap<ChunkPos, u64>>,
     last_tick: Instant,
     last_update: Ticker,
 }
@@ -52,8 +52,8 @@ impl GameImpl {
             network_tx,
             worldgen_tx,
             world: World::new(),
-            connections: HashMap::new(),
-            player_chunks: HashMap::new(),
+            connections: FnvHashMap::default(),
+            player_chunks: FnvHashMap::default(),
             last_tick: Instant::now(),
             last_update: Ticker::from_tick_rate(60),
         }
@@ -77,7 +77,7 @@ impl GameImpl {
                         ].into(),
                         true);
                     self.connections.insert(id, new_player);
-                    self.player_chunks.insert(new_player, HashMap::new());
+                    self.player_chunks.insert(new_player, FnvHashMap::default());
                 }
                 Ev::Disconnect => {
                     if let Some(id) = self.connections.remove(&id) {

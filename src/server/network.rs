@@ -5,7 +5,8 @@ use crate::core::messages::server::{ToGame, ToGamePlayer, ToNetwork};
 use crate::network::{serialize_fragment, ConnectionId, Server};
 use crate::CHUNK_SIZE;
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
+use fnv::FnvHashMap;
 use std::sync::mpsc::{Receiver, Sender};
 use std::time::Instant;
 
@@ -27,7 +28,7 @@ where
     game_tx: Sender<ToGame>,
     server: S,
     // TODO: either use this Instant or remove it
-    queues: HashMap<ConnectionId, (Instant, VecDeque<ToNetwork>)>,
+    queues: FnvHashMap<ConnectionId, (Instant, VecDeque<ToNetwork>)>,
 }
 
 impl<S> ServerImpl<S>
@@ -39,7 +40,7 @@ where
             rx,
             game_tx,
             server,
-            queues: HashMap::new(),
+            queues: FnvHashMap::default(),
         }
     }
 

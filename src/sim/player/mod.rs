@@ -7,7 +7,6 @@ use crate::block::BlockId;
 use crate::config::Config;
 use nalgebra::Vector3;
 use serde_derive::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::ops::BitOr;
 
 mod player_set;
@@ -102,7 +101,6 @@ pub struct Player {
     /// Pitch in degrees
     pub pitch: f64,
     pub render_distance: u64,
-    pub chunks: HashMap<ChunkPos, ()>,
     pub keys: PlayerControls,
     // Player ID
     pub id: PlayerId,
@@ -118,7 +116,6 @@ impl Player {
             yaw: 0.0,
             pitch: 0.0,
             render_distance: 0,
-            chunks: HashMap::new(),
             keys: PlayerControls::none(),
             id : id,
             active : active
