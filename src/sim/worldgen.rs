@@ -37,7 +37,7 @@ impl ChunkGenerator {
 
     pub fn generate(&mut self, pos: ChunkPos) -> Box<ChunkArray> {
         //println!("[Server] Game: generating chunk @ {:?}", pos);
-        let (cx, cy, cz) = (pos.0[0], pos.0[1], pos.0[2]);
+        let (cx, cy, cz) = (pos[0], pos[1], pos[2]);
         let mut chunk = [[[BlockId::from(0); CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE];
         let seed = ((cx * 4242424242 + cz) % 1_000_000_007).abs();
         let mut seed_array = [0; 32];

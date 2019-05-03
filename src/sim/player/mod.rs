@@ -188,7 +188,7 @@ impl Player {
 impl PlayerPos {
     pub fn chunk_pos(self) -> ChunkPos {
         use crate::CHUNK_SIZE;
-        let mut ret = [0; 3];
+        let mut ret = ChunkPos(0, 0, 0);
         for i in 0..3 {
             ret[i] = self.0[i] as i64 / CHUNK_SIZE as i64
                 - if (self.0[i] as i64 % CHUNK_SIZE as i64) < 0 {
@@ -197,7 +197,7 @@ impl PlayerPos {
                     0
                 };
         }
-        ChunkPos(ret)
+        ret
     }
     pub fn inner_chunk_pos(self) -> InnerChunkPos {
         InnerChunkPos::from_coords(self.0)

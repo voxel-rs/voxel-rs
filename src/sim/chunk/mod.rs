@@ -1,4 +1,3 @@
-use std::ops::Add;
 use std::ops::IndexMut;
 use std::ops::Index;
 use crate::block::BlockId;
@@ -6,6 +5,10 @@ use std::collections::hash_map::Entry;
 use crate::CHUNK_SIZE;
 use serde_derive::{Deserialize, Serialize};
 use fnv::FnvHashMap;
+use derive_more::{
+    Add, Sub, Rem, Div, Mul, Shr, Shl,
+    AddAssign, SubAssign, MulAssign, DivAssign, RemAssign, ShrAssign, ShlAssign
+};
 
 pub type BlockData = BlockId;
 pub type ChunkFragment = [BlockData; CHUNK_SIZE];
@@ -14,8 +17,12 @@ pub type ChunkArray = [[ChunkFragment; CHUNK_SIZE]; CHUNK_SIZE];
 pub mod region;
 pub mod grid_tree;
 
-#[derive(Debug, Copy, Clone)]
-pub struct InnerChunkPos([u8; 3]);
+#[derive(
+    Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize,
+    Add, Sub, Mul, Rem, Div, Shr, Shl,
+    AddAssign, SubAssign, MulAssign, DivAssign, RemAssign, ShrAssign, ShlAssign
+)]
+pub struct InnerChunkPos(pub u8, pub u8, pub u8);
 
 impl InnerChunkPos {
     fn coord_to_inner(coord : f64) -> u8 {
@@ -28,11 +35,9 @@ impl InnerChunkPos {
     }
     pub fn from_coords(coords : [f64; 3]) -> InnerChunkPos {
         InnerChunkPos(
-            [
-                InnerChunkPos::coord_to_inner(coords[0]),
-                InnerChunkPos::coord_to_inner(coords[1]),
-                InnerChunkPos::coord_to_inner(coords[2])
-            ]
+            InnerChunkPos::coord_to_inner(coords[0]),
+            InnerChunkPos::coord_to_inner(coords[1]),
+            InnerChunkPos::coord_to_inner(coords[2])
         )
     }
 }
@@ -159,9 +164,9 @@ impl ChunkState {
             ChunkState::Generated(ref mut arr) => (arr, 0),
             ChunkState::Modified(ref mut arr, v) => (arr, *v)
         };
-        let x = i_pos.0[0] as usize;
-        let y = i_pos.0[1] as usize;
-        let z = i_pos.0[2] as usize;
+        let x = i_pos[0] as usize;
+        let y = i_pos[1] as usize;
+        let z = i_pos[2] as usize;
         arr[x][y][z] = block;
         *self = ChunkState::Modified(arr.clone(), v + 1);
     }
@@ -172,7 +177,7 @@ impl ChunkPos {
     pub fn orthogonal_dist(self, other: ChunkPos) -> u64 {
         let mut maxcoord = 0;
         for i in 0..3 {
-            maxcoord = i64::max(maxcoord, (other.0[i] - self.0[i]).abs());
+            maxcoord = i64::max(maxcoord, (other[i] - self[i]).abs());
         }
         maxcoord as u64
     }
@@ -195,7 +200,7 @@ impl ChunkPos {
 
 impl From<[i64; 3]> for ChunkPos {
     fn from(pos : [i64; 3]) -> ChunkPos {
-        ChunkPos(pos)
+        ChunkPos(pos[0], pos[1], pos[2])
     }
 }
 
@@ -203,35 +208,85 @@ impl Index<usize> for ChunkPos {
     type Output = i64;
 
     fn index(&self, idx : usize) -> &i64 {
-        let ChunkPos(arr) = self;
-        &arr[idx]
+        match idx {
+            0 => &self.0,
+            1 => &self.1,
+            2 => &self.2,
+            _ => panic!("Index out of bounds!")
+        }
     }
 }
 
 impl IndexMut<usize> for ChunkPos {
     fn index_mut(&mut self, idx : usize) -> &mut i64 {
-        let ChunkPos(arr) = self;
-        &mut arr[idx]
+        match idx {
+            0 => &mut self.0,
+            1 => &mut self.1,
+            2 => &mut self.2,
+            _ => panic!("Index out of bounds!")
+        }
     }
 }
 
+impl Index<usize> for InnerChunkPos {
+    type Output = u8;
 
-impl Add for ChunkPos {
-    type Output = ChunkPos;
-
-    fn add(self, other : ChunkPos) -> ChunkPos {
-        [
-            self[0] + other[0],
-            self[1] + other[1],
-            self[2] + other[2]
-        ].into()
+    fn index(&self, idx : usize) -> &u8 {
+        match idx {
+            0 => &self.0,
+            1 => &self.1,
+            2 => &self.2,
+            _ => panic!("Index out of bounds!")
+        }
     }
 }
+
+impl IndexMut<usize> for InnerChunkPos {
+    fn index_mut(&mut self, idx : usize) -> &mut u8 {
+        match idx {
+            0 => &mut self.0,
+            1 => &mut self.1,
+            2 => &mut self.2,
+            _ => panic!("Index out of bounds!")
+        }
+    }
+}
+
+impl Index<usize> for FragmentPos {
+    type Output = usize;
+
+    fn index(&self, idx : usize) -> &usize {
+        match idx {
+            0 => &self.0,
+            1 => &self.1,
+            _ => panic!("Index out of bounds!")
+        }
+    }
+}
+
+impl IndexMut<usize> for FragmentPos {
+    fn index_mut(&mut self, idx : usize) -> &mut usize {
+        match idx {
+            0 => &mut self.0,
+            1 => &mut self.1,
+            _ => panic!("Index out of bounds!")
+        }
+    }
+}
+
 
 
 // TODO: Struct instead ?
-#[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
-pub struct ChunkPos(pub [i64; 3]);
+#[derive(
+    Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize,
+    Add, Sub, Mul, Rem, Div, Shr, Shl,
+    AddAssign, SubAssign, MulAssign, DivAssign, RemAssign, ShrAssign, ShlAssign
+)]
+pub struct ChunkPos(pub i64, pub i64, pub i64);
 
-#[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
-pub struct FragmentPos(pub [usize; 2]);
+#[derive(
+    Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize,
+    Add, Sub, Mul, Rem, Div, Shr, Shl,
+    AddAssign, SubAssign, MulAssign, DivAssign, RemAssign, ShrAssign, ShlAssign
+)]
+pub struct FragmentPos(pub usize, pub usize);
