@@ -1,5 +1,9 @@
 use crate::CHUNK_SIZE;
-use super::grid_tree::SubIndex;
+
+pub trait SubIndex<Lowered> {
+    type Remainder;
+    fn factor(&self) -> (Lowered, Self::Remainder);
+}
 
 use std::ops::IndexMut;
 use std::ops::Index;
@@ -21,7 +25,7 @@ pub struct WorldPos(Vector3<f64>);
 impl SubIndex<BlockPos> for WorldPos {
     type Remainder = InnerBlockPos;
 
-    fn reduce(&self) -> (BlockPos, InnerBlockPos) {
+    fn factor(&self) -> (BlockPos, InnerBlockPos) {
         let block : BlockPos = [self[0] as i64, self[1] as i64, self[2] as i64].into();
         let inner : Vector3<f64> = [
                 self[0] - (block[0] as f64),
@@ -75,7 +79,7 @@ impl IndexMut<usize> for BlockPos {
 impl SubIndex<ChunkPos> for BlockPos {
     type Remainder = InnerChunkPos;
 
-    fn reduce(&self) -> (ChunkPos, InnerChunkPos) {
+    fn factor(&self) -> (ChunkPos, InnerChunkPos) {
         (
             [
                 self.0.div_floor(&(CHUNK_SIZE as i64)),

@@ -12,11 +12,6 @@ pub enum TreeOrNode<Idx, Node, Tree> {
     Nothing
 }
 
-pub trait SubIndex<Lowered> {
-    type Remainder;
-    fn reduce(&self) -> (Lowered, Self::Remainder);
-}
-
 pub trait GridTree<Idx> {
     type Node;
     type LayerInfo;
