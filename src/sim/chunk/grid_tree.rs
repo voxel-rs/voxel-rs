@@ -16,20 +16,20 @@ pub trait Grid<Idx> {
     type Node;
 
     // Get the node at a given position, or None if there's none there
-    fn get_node(&self, pos : [Idx; 3]) -> Option<&Self::Node>;
+    fn get_node(&self, pos : Idx) -> Option<&Self::Node>;
     // Get a mutable reference to the node at a given position, or None if there's none there
-    fn get_node_mut(&mut self, pos : [Idx; 3]) -> Option<&mut Self::Node>;
+    fn get_node_mut(&mut self, pos : Idx) -> Option<&mut Self::Node>;
     // Get a mutable reference to the node at a given position. If it doesn't exist, put in a default
     // and return a reference to that. Panics if out of bounds.
-    fn get_node_def(&mut self, pos : [Idx; 3], def : Self::Node) -> &mut Self::Node;
+    fn get_node_def(&mut self, pos : Idx, def : Self::Node) -> &mut Self::Node;
     // Set a node at a given position, and return the node that was there before, or None if there
     // wasn't any. Panics if the node is out of bounds.
-    fn set_node(&mut self, pos : [Idx; 3], node : Self::Node) -> Option<Self::Node>;
+    fn set_node(&mut self, pos : Idx, node : Self::Node) -> Option<Self::Node>;
     // Whether the 3-tuple pos is in bounds
-    fn in_bounds(&self, pos : [Idx; 3]) -> bool;
+    fn in_bounds(&self, pos : Idx) -> bool;
     // Delete a node at a given position, and return the node that was there before, or None if there
     // wasn't any
-    fn remove(&mut self, pos : [Idx; 3]) -> Self::Node;
+    fn remove(&mut self, pos : Idx) -> Self::Node;
 }
 
 pub trait GridTree<Idx> : Grid<Idx> {
@@ -44,9 +44,9 @@ pub trait GridTree<Idx> : Grid<Idx> {
     fn get_info_mut(&mut self) -> &mut Self::LayerInfo;
     // Get the highest layer above a position, and the sub-position associated with it. If there is
     // no layer above the position, return the position if it exists, or None otherwise.
-    fn sublayer(&self, pos : [Idx; 3]) -> TreeOrNode<Self::SubIdx, &Self::Node, &Self::SubLayer>;
-    fn sublayer_mut(&mut self, pos : [Idx; 3]) -> TreeOrNode<Self::SubIdx, &mut Self::Node, &mut Self::SubLayer>;
+    fn sublayer(&self, pos : Idx) -> TreeOrNode<Self::SubIdx, &Self::Node, &Self::SubLayer>;
+    fn sublayer_mut(&mut self, pos : Idx) -> TreeOrNode<Self::SubIdx, &mut Self::Node, &mut Self::SubLayer>;
     // Delete the highest layer above a position. If there is no layer above the position, delete the node
     // at the position, if there is any. Return what was deleted
-    fn remove_sublayer(&mut self, pos : [Idx; 3]) -> TreeOrNode<Self::SubIdx, Self::Node, Self::SubLayer>;
+    fn remove_sublayer(&mut self, pos : Idx) -> TreeOrNode<Self::SubIdx, Self::Node, Self::SubLayer>;
 }
