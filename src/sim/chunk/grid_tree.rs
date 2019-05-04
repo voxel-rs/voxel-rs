@@ -12,17 +12,9 @@ pub enum TreeOrNode<Idx, Node, Tree> {
     Nothing
 }
 
-pub trait GridTree<Idx> {
+pub trait Grid<Idx> {
     type Node;
-    type LayerInfo;
-    type SubIdx;
-    type SubLayer : GridTree<Self::SubIdx>;
 
-    // Basic functions
-    // Get the info associated with this layer
-    fn get_info(&self) -> &Self::LayerInfo;
-    // Get a mutable reference to the info associated with this layer
-    fn get_info_mut(&mut self) -> &mut Self::LayerInfo;
     // Get the node at a given position, or None if there's none there
     fn get_node(&self, pos : [Idx; 3]) -> Option<&Self::Node>;
     // Get a mutable reference to the node at a given position, or None if there's none there
@@ -38,6 +30,18 @@ pub trait GridTree<Idx> {
     // Delete a node at a given position, and return the node that was there before, or None if there
     // wasn't any
     fn remove(&mut self, pos : [Idx; 3]) -> Self::Node;
+}
+
+pub trait GridTree<Idx> : Grid<Idx> {
+    type LayerInfo;
+    type SubIdx;
+    type SubLayer : Grid<Self::SubIdx, Node=Self::Node>;
+
+    // Basic functions
+    // Get the info associated with this layer
+    fn get_info(&self) -> &Self::LayerInfo;
+    // Get a mutable reference to the info associated with this layer
+    fn get_info_mut(&mut self) -> &mut Self::LayerInfo;
     // Get the highest layer above a position, and the sub-position associated with it. If there is
     // no layer above the position, return the position if it exists, or None otherwise.
     fn sublayer(&self, pos : [Idx; 3]) -> TreeOrNode<Self::SubIdx, &Self::Node, &Self::SubLayer>;
@@ -45,5 +49,4 @@ pub trait GridTree<Idx> {
     // Delete the highest layer above a position. If there is no layer above the position, delete the node
     // at the position, if there is any. Return what was deleted
     fn remove_sublayer(&mut self, pos : [Idx; 3]) -> TreeOrNode<Self::SubIdx, Self::Node, Self::SubLayer>;
-
 }
