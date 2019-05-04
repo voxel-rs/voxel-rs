@@ -23,17 +23,19 @@ pub use player_set::PlayerId;
     Add, Sub, Mul, Rem, Div,
     AddAssign, SubAssign, MulAssign, DivAssign, RemAssign
 )]
-pub struct PlayerPos(f64, f64, f64);
+pub struct PlayerPos{
+    pub x : f64, pub y : f64, pub z : f64
+}
 
 impl From<[f64; 3]> for PlayerPos {
     fn from(pos : [f64; 3]) -> PlayerPos {
-        PlayerPos(pos[0], pos[1], pos[2])
+        (pos[0], pos[1], pos[2]).into()
     }
 }
 
 impl From<Vector3<f64>> for PlayerPos {
     fn from(pos : Vector3<f64>) -> PlayerPos {
-        PlayerPos(pos[0], pos[1], pos[2])
+        (pos[0], pos[1], pos[2]).into()
     }
 }
 
@@ -48,9 +50,9 @@ impl Index<usize> for PlayerPos {
 
     fn index(&self, idx : usize) -> &f64 {
         match idx {
-            0 => &self.0,
-            1 => &self.1,
-            2 => &self.2,
+            0 => &self.x,
+            1 => &self.y,
+            2 => &self.z,
             _ => panic!("Index out of bounds!")
         }
     }
@@ -59,9 +61,9 @@ impl Index<usize> for PlayerPos {
 impl IndexMut<usize> for PlayerPos {
     fn index_mut(&mut self, idx : usize) -> &mut f64 {
         match idx {
-            0 => &mut self.0,
-            1 => &mut self.1,
-            2 => &mut self.2,
+            0 => &mut self.x,
+            1 => &mut self.y,
+            2 => &mut self.z,
             _ => panic!("Index out of bounds!")
         }
     }
