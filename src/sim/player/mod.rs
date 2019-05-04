@@ -261,7 +261,7 @@ impl Player {
 impl PlayerPos {
     pub fn chunk_pos(self) -> ChunkPos {
         use crate::CHUNK_SIZE;
-        let mut ret = ChunkPos(0, 0, 0);
+        let mut ret : ChunkPos = [0, 0, 0].into();
         for i in 0..3 {
             ret[i] = self[i] as i64 / CHUNK_SIZE as i64
                 - if (self[i] as i64 % CHUNK_SIZE as i64) < 0 {

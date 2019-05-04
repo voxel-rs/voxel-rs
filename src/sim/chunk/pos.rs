@@ -46,15 +46,17 @@ impl SubIndex<BlockPos> for WorldPos {
 }
 
 #[derive(
-    Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize,
+    Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize, From,
     Add, Sub, Mul, Rem, Div, Shr, Shl,
     AddAssign, SubAssign, MulAssign, DivAssign, RemAssign, ShrAssign, ShlAssign
 )]
-pub struct BlockPos(pub i64, pub i64, pub i64);
+pub struct BlockPos{
+    pub x : i64, pub y : i64, pub z : i64
+}
 
 impl From<[i64; 3]> for BlockPos {
     fn from(pos : [i64; 3]) -> BlockPos {
-        BlockPos(pos[0], pos[1], pos[2])
+        (pos[0], pos[1], pos[2]).into()
     }
 }
 
@@ -63,9 +65,9 @@ impl Index<usize> for BlockPos {
 
     fn index(&self, idx : usize) -> &i64 {
         match idx {
-            0 => &self.0,
-            1 => &self.1,
-            2 => &self.2,
+            0 => &self.x,
+            1 => &self.y,
+            2 => &self.z,
             _ => panic!("Index out of bounds!")
         }
     }
@@ -74,9 +76,9 @@ impl Index<usize> for BlockPos {
 impl IndexMut<usize> for BlockPos {
     fn index_mut(&mut self, idx : usize) -> &mut i64 {
         match idx {
-            0 => &mut self.0,
-            1 => &mut self.1,
-            2 => &mut self.2,
+            0 => &mut self.x,
+            1 => &mut self.y,
+            2 => &mut self.z,
             _ => panic!("Index out of bounds!")
         }
     }
@@ -87,17 +89,17 @@ impl SubIndex<ChunkPos> for BlockPos {
 
     fn high(&self) -> ChunkPos {
         [
-            self.0.div_floor(&(CHUNK_SIZE as i64)),
-            self.1.div_floor(&(CHUNK_SIZE as i64)),
-            self.2.div_floor(&(CHUNK_SIZE as i64))
+            self.x.div_floor(&(CHUNK_SIZE as i64)),
+            self.y.div_floor(&(CHUNK_SIZE as i64)),
+            self.z.div_floor(&(CHUNK_SIZE as i64))
         ].into()
     }
 
     fn low(&self) -> InnerChunkPos {
         [
-            (self.0 as u8) % (CHUNK_SIZE as u8),
-            (self.1 as u8) % (CHUNK_SIZE as u8),
-            (self.2 as u8) % (CHUNK_SIZE as u8)
+            (self.x as u8) % (CHUNK_SIZE as u8),
+            (self.y as u8) % (CHUNK_SIZE as u8),
+            (self.z as u8) % (CHUNK_SIZE as u8)
         ].into()
     }
 
@@ -111,11 +113,13 @@ impl SubIndex<ChunkPos> for BlockPos {
 pub struct InnerBlockPos(Vector3<f64>);
 
 #[derive(
-    Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize,
+    Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize, From,
     Add, Sub, Mul, Rem, Div, Shr, Shl,
     AddAssign, SubAssign, MulAssign, DivAssign, RemAssign, ShrAssign, ShlAssign
 )]
-pub struct ChunkPos(pub i64, pub i64, pub i64);
+pub struct ChunkPos {
+    pub x : i64, pub y : i64, pub z : i64
+}
 
 impl ChunkPos {
     pub fn orthogonal_dist(self, other: ChunkPos) -> u64 {
@@ -145,7 +149,7 @@ impl ChunkPos {
 
 impl From<[i64; 3]> for ChunkPos {
     fn from(pos : [i64; 3]) -> ChunkPos {
-        ChunkPos(pos[0], pos[1], pos[2])
+        (pos[0], pos[1], pos[2]).into()
     }
 }
 
@@ -154,9 +158,9 @@ impl Index<usize> for ChunkPos {
 
     fn index(&self, idx : usize) -> &i64 {
         match idx {
-            0 => &self.0,
-            1 => &self.1,
-            2 => &self.2,
+            0 => &self.x,
+            1 => &self.y,
+            2 => &self.z,
             _ => panic!("Index out of bounds!")
         }
     }
@@ -165,29 +169,31 @@ impl Index<usize> for ChunkPos {
 impl IndexMut<usize> for ChunkPos {
     fn index_mut(&mut self, idx : usize) -> &mut i64 {
         match idx {
-            0 => &mut self.0,
-            1 => &mut self.1,
-            2 => &mut self.2,
+            0 => &mut self.x,
+            1 => &mut self.y,
+            2 => &mut self.z,
             _ => panic!("Index out of bounds!")
         }
     }
 }
 
 #[derive(
-    Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize,
+    Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize, From,
     Add, Sub, Mul, Rem, Div, Shr, Shl,
     AddAssign, SubAssign, MulAssign, DivAssign, RemAssign, ShrAssign, ShlAssign
 )]
-pub struct InnerChunkPos(pub u8, pub u8, pub u8);
+pub struct InnerChunkPos{
+    pub x : u8, pub y : u8, pub z : u8
+}
 
 impl Index<usize> for InnerChunkPos {
     type Output = u8;
 
     fn index(&self, idx : usize) -> &u8 {
         match idx {
-            0 => &self.0,
-            1 => &self.1,
-            2 => &self.2,
+            0 => &self.x,
+            1 => &self.y,
+            2 => &self.z,
             _ => panic!("Index out of bounds!")
         }
     }
@@ -196,9 +202,9 @@ impl Index<usize> for InnerChunkPos {
 impl IndexMut<usize> for InnerChunkPos {
     fn index_mut(&mut self, idx : usize) -> &mut u8 {
         match idx {
-            0 => &mut self.0,
-            1 => &mut self.1,
-            2 => &mut self.2,
+            0 => &mut self.x,
+            1 => &mut self.y,
+            2 => &mut self.z,
             _ => panic!("Index out of bounds!")
         }
     }
@@ -206,24 +212,32 @@ impl IndexMut<usize> for InnerChunkPos {
 
 impl From<[u8; 3]> for InnerChunkPos {
     fn from(pos : [u8; 3]) -> InnerChunkPos {
-        InnerChunkPos(pos[0], pos[1], pos[2])
+        (pos[0], pos[1], pos[2]).into()
     }
 }
 
 #[derive(
-    Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize,
+    Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize, From,
     Add, Sub, Mul, Rem, Div, Shr, Shl,
     AddAssign, SubAssign, MulAssign, DivAssign, RemAssign, ShrAssign, ShlAssign
 )]
-pub struct FragmentPos(pub usize, pub usize);
+pub struct FragmentPos{
+    pub x : usize, pub y : usize
+}
+
+impl From<[usize; 2]> for FragmentPos {
+    fn from(pos : [usize; 2]) -> FragmentPos {
+        (pos[0], pos[1]).into()
+    }
+}
 
 impl Index<usize> for FragmentPos {
     type Output = usize;
 
     fn index(&self, idx : usize) -> &usize {
         match idx {
-            0 => &self.0,
-            1 => &self.1,
+            0 => &self.x,
+            1 => &self.y,
             _ => panic!("Index out of bounds!")
         }
     }
@@ -232,8 +246,8 @@ impl Index<usize> for FragmentPos {
 impl IndexMut<usize> for FragmentPos {
     fn index_mut(&mut self, idx : usize) -> &mut usize {
         match idx {
-            0 => &mut self.0,
-            1 => &mut self.1,
+            0 => &mut self.x,
+            1 => &mut self.y,
             _ => panic!("Index out of bounds!")
         }
     }

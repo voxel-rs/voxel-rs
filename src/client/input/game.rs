@@ -122,7 +122,7 @@ impl InputImpl {
         for i in -render_dist..(render_dist + 1) {
             for j in -render_dist..(render_dist + 1) {
                 for k in -render_dist..(render_dist + 1) {
-                    let mut pos = ChunkPos(i, j, k);
+                    let mut pos : ChunkPos = [i, j, k].into();
                     for x in 0..3 {
                         pos[x] += player_chunk[x];
                     }

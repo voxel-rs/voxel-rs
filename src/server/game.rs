@@ -145,7 +145,7 @@ impl GameImpl {
             // Sort chunks by squared distance to the player
             nearby.sort_unstable_by_key(|&(x, y, z)| x * x + y * y + z * z);
             for (x, y, z) in nearby.drain(..) {
-                let mut pos = ChunkPos(x, y, z);
+                let mut pos : ChunkPos = [x, y, z].into();
                 for i in 0..3 {
                     pos[i] += pc[i];
                 }
