@@ -13,7 +13,8 @@ pub enum TreeOrNode<Idx, Node, Tree> {
 }
 
 pub trait SubIndex<Lowered> {
-    fn reduce(&self) -> Lowered;
+    type Remainder;
+    fn reduce(&self) -> (Lowered, Self::Remainder);
 }
 
 pub trait GridTree<Idx> {

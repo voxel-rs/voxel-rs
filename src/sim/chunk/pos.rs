@@ -1,12 +1,102 @@
 use crate::CHUNK_SIZE;
+use super::grid_tree::SubIndex;
 
 use std::ops::IndexMut;
 use std::ops::Index;
 use derive_more::{
-    Add, Sub, Rem, Div, Mul, Shr, Shl,
-    AddAssign, SubAssign, MulAssign, DivAssign, RemAssign, ShrAssign, ShlAssign
+    Add, Sub, Rem, Div, Mul, Shr, Shl, Index, IndexMut,
+    AddAssign, SubAssign, MulAssign, DivAssign, RemAssign, ShrAssign, ShlAssign, From
 };
 use serde_derive::{Deserialize, Serialize};
+use num::Integer;
+use nalgebra::Vector3;
+
+#[derive(
+    PartialEq, Clone, Copy, Debug, From,
+    Add, Sub, Mul, Rem, Div, Index, IndexMut,
+    AddAssign, SubAssign, MulAssign, DivAssign, RemAssign
+)]
+pub struct WorldPos(Vector3<f64>);
+
+impl SubIndex<BlockPos> for WorldPos {
+    type Remainder = InnerBlockPos;
+
+    fn reduce(&self) -> (BlockPos, InnerBlockPos) {
+        let block : BlockPos = [self[0] as i64, self[1] as i64, self[2] as i64].into();
+        let inner : Vector3<f64> = [
+                self[0] - (block[0] as f64),
+                self[1] - (block[1] as f64),
+                self[2] - (block[2] as f64)
+        ].into();
+        (
+            block,
+            inner.into()
+        )
+    }
+}
+
+#[derive(
+    Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize,
+    Add, Sub, Mul, Rem, Div, Shr, Shl,
+    AddAssign, SubAssign, MulAssign, DivAssign, RemAssign, ShrAssign, ShlAssign
+)]
+pub struct BlockPos(pub i64, pub i64, pub i64);
+
+impl From<[i64; 3]> for BlockPos {
+    fn from(pos : [i64; 3]) -> BlockPos {
+        BlockPos(pos[0], pos[1], pos[2])
+    }
+}
+
+impl Index<usize> for BlockPos {
+    type Output = i64;
+
+    fn index(&self, idx : usize) -> &i64 {
+        match idx {
+            0 => &self.0,
+            1 => &self.1,
+            2 => &self.2,
+            _ => panic!("Index out of bounds!")
+        }
+    }
+}
+
+impl IndexMut<usize> for BlockPos {
+    fn index_mut(&mut self, idx : usize) -> &mut i64 {
+        match idx {
+            0 => &mut self.0,
+            1 => &mut self.1,
+            2 => &mut self.2,
+            _ => panic!("Index out of bounds!")
+        }
+    }
+}
+
+impl SubIndex<ChunkPos> for BlockPos {
+    type Remainder = InnerChunkPos;
+
+    fn reduce(&self) -> (ChunkPos, InnerChunkPos) {
+        (
+            [
+                self.0.div_floor(&(CHUNK_SIZE as i64)),
+                self.1.div_floor(&(CHUNK_SIZE as i64)),
+                self.2.div_floor(&(CHUNK_SIZE as i64))
+            ].into(),
+            [
+                (self.0 as u8) % (CHUNK_SIZE as u8),
+                (self.1 as u8) % (CHUNK_SIZE as u8),
+                (self.2 as u8) % (CHUNK_SIZE as u8)
+            ].into()
+        )
+    }
+}
+
+#[derive(
+    PartialEq, Clone, Copy, Debug, From,
+    Add, Sub, Mul, Rem, Div, Index, IndexMut,
+    AddAssign, SubAssign, MulAssign, DivAssign, RemAssign
+)]
+pub struct InnerBlockPos(Vector3<f64>);
 
 #[derive(
     Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize,
@@ -117,6 +207,12 @@ impl IndexMut<usize> for InnerChunkPos {
             2 => &mut self.2,
             _ => panic!("Index out of bounds!")
         }
+    }
+}
+
+impl From<[u8; 3]> for InnerChunkPos {
+    fn from(pos : [u8; 3]) -> InnerChunkPos {
+        InnerChunkPos(pos[0], pos[1], pos[2])
     }
 }
 
