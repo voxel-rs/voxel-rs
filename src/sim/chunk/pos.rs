@@ -1,10 +1,5 @@
 use crate::CHUNK_SIZE;
 
-pub trait SubIndex<Lowered> {
-    type Remainder;
-    fn factor(&self) -> (Lowered, Self::Remainder);
-}
-
 use std::ops::IndexMut;
 use std::ops::Index;
 use derive_more::{
@@ -14,6 +9,15 @@ use derive_more::{
 use serde_derive::{Deserialize, Serialize};
 use num::Integer;
 use nalgebra::Vector3;
+
+pub trait SubIndex<T> {
+    type Remainder;
+    fn high(&self) -> T;
+    fn low(&self) -> Self::Remainder;
+    fn factor(&self) -> (T, Self::Remainder) {
+        (self.high(), self.low())
+    }
+}
 
 #[derive(
     PartialEq, Clone, Copy, Debug, From,
@@ -25,18 +29,20 @@ pub struct WorldPos(Vector3<f64>);
 impl SubIndex<BlockPos> for WorldPos {
     type Remainder = InnerBlockPos;
 
-    fn factor(&self) -> (BlockPos, InnerBlockPos) {
-        let block : BlockPos = [self[0] as i64, self[1] as i64, self[2] as i64].into();
+    fn high(&self) -> BlockPos {
+        [self[0] as i64, self[1] as i64, self[2] as i64].into()
+    }
+
+    fn low(&self) -> InnerBlockPos {
+        let block = self.high();
         let inner : Vector3<f64> = [
                 self[0] - (block[0] as f64),
                 self[1] - (block[1] as f64),
                 self[2] - (block[2] as f64)
         ].into();
-        (
-            block,
-            inner.into()
-        )
+        inner.into()
     }
+
 }
 
 #[derive(
@@ -79,20 +85,22 @@ impl IndexMut<usize> for BlockPos {
 impl SubIndex<ChunkPos> for BlockPos {
     type Remainder = InnerChunkPos;
 
-    fn factor(&self) -> (ChunkPos, InnerChunkPos) {
-        (
-            [
-                self.0.div_floor(&(CHUNK_SIZE as i64)),
-                self.1.div_floor(&(CHUNK_SIZE as i64)),
-                self.2.div_floor(&(CHUNK_SIZE as i64))
-            ].into(),
-            [
-                (self.0 as u8) % (CHUNK_SIZE as u8),
-                (self.1 as u8) % (CHUNK_SIZE as u8),
-                (self.2 as u8) % (CHUNK_SIZE as u8)
-            ].into()
-        )
+    fn high(&self) -> ChunkPos {
+        [
+            self.0.div_floor(&(CHUNK_SIZE as i64)),
+            self.1.div_floor(&(CHUNK_SIZE as i64)),
+            self.2.div_floor(&(CHUNK_SIZE as i64))
+        ].into()
     }
+
+    fn low(&self) -> InnerChunkPos {
+        [
+            (self.0 as u8) % (CHUNK_SIZE as u8),
+            (self.1 as u8) % (CHUNK_SIZE as u8),
+            (self.2 as u8) % (CHUNK_SIZE as u8)
+        ].into()
+    }
+
 }
 
 #[derive(
@@ -171,24 +179,6 @@ impl IndexMut<usize> for ChunkPos {
     AddAssign, SubAssign, MulAssign, DivAssign, RemAssign, ShrAssign, ShlAssign
 )]
 pub struct InnerChunkPos(pub u8, pub u8, pub u8);
-
-impl InnerChunkPos {
-    fn coord_to_inner(coord : f64) -> u8 {
-        let mod_coord = coord as i64 % CHUNK_SIZE as i64;
-        (if mod_coord < 0 {
-            CHUNK_SIZE as i64 + mod_coord
-        } else {
-            mod_coord
-        }) as u8
-    }
-    pub fn from_coords(coords : [f64; 3]) -> InnerChunkPos {
-        InnerChunkPos(
-            InnerChunkPos::coord_to_inner(coords[0]),
-            InnerChunkPos::coord_to_inner(coords[1]),
-            InnerChunkPos::coord_to_inner(coords[2])
-        )
-    }
-}
 
 impl Index<usize> for InnerChunkPos {
     type Output = u8;

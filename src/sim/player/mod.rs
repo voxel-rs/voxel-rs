@@ -1,20 +1,93 @@
 //! `Player`-related data structures.
 
+use std::ops::{Index, IndexMut};
 use glutin::ElementState;
 use std::ops::BitOrAssign;
-use super::chunk::{ChunkMap, ChunkPos, InnerChunkPos, ChunkState};
+use super::chunk::{ChunkMap, ChunkPos, InnerChunkPos, ChunkState, WorldPos, SubIndex};
 use crate::block::BlockId;
 use crate::config::Config;
 use nalgebra::Vector3;
 use serde_derive::{Deserialize, Serialize};
 use std::ops::BitOr;
+use derive_more::{
+    Add, Sub, Rem, Div, Mul,
+    AddAssign, SubAssign, MulAssign, DivAssign, RemAssign, From
+};
 
 mod player_set;
 pub use player_set::PlayerSet;
 pub use player_set::PlayerId;
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
-pub struct PlayerPos(pub [f64; 3]);
+#[derive(
+    PartialEq, Clone, Copy, Debug, From, Serialize, Deserialize,
+    Add, Sub, Mul, Rem, Div,
+    AddAssign, SubAssign, MulAssign, DivAssign, RemAssign
+)]
+pub struct PlayerPos(f64, f64, f64);
+
+impl From<[f64; 3]> for PlayerPos {
+    fn from(pos : [f64; 3]) -> PlayerPos {
+        PlayerPos(pos[0], pos[1], pos[2])
+    }
+}
+
+impl From<Vector3<f64>> for PlayerPos {
+    fn from(pos : Vector3<f64>) -> PlayerPos {
+        PlayerPos(pos[0], pos[1], pos[2])
+    }
+}
+
+impl From<WorldPos> for PlayerPos {
+    fn from(pos : WorldPos) -> PlayerPos {
+        [pos[0], pos[1], pos[2]].into()
+    }
+}
+
+impl Index<usize> for PlayerPos {
+    type Output = f64;
+
+    fn index(&self, idx : usize) -> &f64 {
+        match idx {
+            0 => &self.0,
+            1 => &self.1,
+            2 => &self.2,
+            _ => panic!("Index out of bounds!")
+        }
+    }
+}
+
+impl IndexMut<usize> for PlayerPos {
+    fn index_mut(&mut self, idx : usize) -> &mut f64 {
+        match idx {
+            0 => &mut self.0,
+            1 => &mut self.1,
+            2 => &mut self.2,
+            _ => panic!("Index out of bounds!")
+        }
+    }
+}
+
+impl Into<[f64; 3]> for PlayerPos {
+    fn into(self) -> [f64; 3] {
+        [self[0], self[1], self[2]]
+    }
+}
+
+
+impl Into<Vector3<f64>> for PlayerPos {
+    fn into(self) -> Vector3<f64> {
+        [self[0], self[1], self[2]].into()
+    }
+}
+
+impl Into<WorldPos> for PlayerPos {
+    fn into(self) -> WorldPos {
+        let v : Vector3<f64> = self.into();
+        v.into()
+    }
+}
+
+
 
 // Invidual key controls
 #[derive(Debug, Clone, Copy)]
@@ -175,7 +248,7 @@ impl Player {
     }
 
     pub fn get_pos(&self) -> PlayerPos {
-        PlayerPos(self.pos.into())
+        self.pos.into()
     }
 
     pub fn set_input(&mut self, input: &PlayerInput) {
@@ -190,8 +263,8 @@ impl PlayerPos {
         use crate::CHUNK_SIZE;
         let mut ret = ChunkPos(0, 0, 0);
         for i in 0..3 {
-            ret[i] = self.0[i] as i64 / CHUNK_SIZE as i64
-                - if (self.0[i] as i64 % CHUNK_SIZE as i64) < 0 {
+            ret[i] = self[i] as i64 / CHUNK_SIZE as i64
+                - if (self[i] as i64 % CHUNK_SIZE as i64) < 0 {
                     1
                 } else {
                     0
@@ -200,6 +273,7 @@ impl PlayerPos {
         ret
     }
     pub fn inner_chunk_pos(self) -> InnerChunkPos {
-        InnerChunkPos::from_coords(self.0)
+        let wp : WorldPos = self.into();
+        wp.high().low()
     }
 }
