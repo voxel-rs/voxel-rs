@@ -8,10 +8,6 @@ pub type BlockData = BlockId;
 pub type ChunkFragment = [BlockData; CHUNK_SIZE];
 pub type ChunkArray = [[ChunkFragment; CHUNK_SIZE]; CHUNK_SIZE];
 
-pub mod region;
-pub mod grid;
-pub mod grid_tree;
-
 mod pos;
 pub use pos::*;
 
