@@ -3,6 +3,7 @@
 
 use std::ops::{Index, IndexMut};
 
+#[allow(dead_code)]
 pub struct IndexEntry<I, T> {
     pub index : I,
     pub value : Option<T>
@@ -32,6 +33,7 @@ pub trait LazyContainer<Idx> : IndexMut<
     }
 }
 
+#[allow(dead_code)]
 pub struct DenseContainer<T>(T);
 
 impl<Idx, T : IndexMut<Idx>> Index<Idx> for DenseContainer<T> {
