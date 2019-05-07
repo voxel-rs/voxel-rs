@@ -1,7 +1,7 @@
 // A lazy container from which items *cannot* be removed (save by destroying the container).
 // Items *can*, however, be mutated and overwritten.
 
-use std::ops::{Index, IndexMut};
+use std::ops::{IndexMut};
 
 #[allow(dead_code)]
 pub struct IndexEntry<I, T> {

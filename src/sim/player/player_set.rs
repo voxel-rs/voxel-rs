@@ -1,9 +1,11 @@
 use super::Player;
 use nalgebra::Vector3;
 
-//use std::collections::HashMap;
+use std::collections::HashMap;
 use std::ops::Index;
 use std::ops::IndexMut;
+
+use crate::utils::lazy_container::{LazyContainer};
 
 use serde_derive::{Serialize, Deserialize};
 
@@ -14,7 +16,7 @@ pub struct PlayerId {
 
 pub struct PlayerSet {
     players : Vec<Player>,
-    //name_lookup : HashMap<String, PlayerId>
+    name_lookup : HashMap<String, PlayerId>
 }
 
 impl PlayerSet {
@@ -22,15 +24,9 @@ impl PlayerSet {
     pub fn new() -> PlayerSet {
         PlayerSet {
             players : Vec::new(),
-            //name_lookup : HashMap::new()
+            name_lookup : HashMap::new()
         }
     }
-
-    /*
-    pub fn get_id(&self, name : &String) -> Option<PlayerId> {
-        self.name_lookup.get(name).cloned()
-    }
-    */
 
     pub fn new_player(&mut self, pos : Vector3<f64>, active : bool) -> PlayerId {
         let new_id = PlayerId{ idx : self.players.len() as u32 };
@@ -52,6 +48,21 @@ impl PlayerSet {
         self.players.iter_mut()
     }
 
+}
+
+impl LazyContainer<String> for PlayerSet {
+    type Item = Player;
+    type ItemID = PlayerId;
+
+    fn get_id(&self, name : &String) -> Option<PlayerId> {
+        self.name_lookup.get(name).cloned()
+    }
+    fn get_at(&self, id : Self::ItemID) -> &Self::Item {
+        &self[id]
+    }
+    fn get_at_mut(&mut self, id : Self::ItemID) -> &mut Self::Item {
+        &mut self[id]
+    }
 }
 
 impl Index<PlayerId> for PlayerSet {
