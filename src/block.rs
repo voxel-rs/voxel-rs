@@ -6,11 +6,25 @@ use derive_more::{From};
 
 /// Block representation
 pub trait Block {
-    /// Append the block's vertices to the current Vertex Buffers
+    /// Append the block's vertices to the rendering Vertex Buffers
     /// TODO: Use the Vertex type instead of Vec<>
-    fn render(&self, vertices: &mut Vec<Vertex>, adj: u8, delta: [u64; 3]);
+    fn render(&self, vertices: &mut Vec<Vertex>, adj: u8, delta: [u64; 3]) {
+        self.mesh(vertices, adj, delta)
+    }
+    // Append the block's vertices to the physics Vertex Buffers
+    fn mesh(&self, vertices : &mut Vec<Vertex>, adj : u8, delta : [u64; 3]);
     /// Does this block hide adjacent blocks ?
     fn is_opaque(&self) -> bool;
+    /// What state of matter is this block (matters for physics)
+    fn state(&self) -> MatterState;
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
+pub enum MatterState {
+    Gas,
+    Liquid,
+    Solid,
+    Vacuum
 }
 
 /// A block's id
@@ -38,12 +52,25 @@ impl Block for BlockObj {
             BlockObj::Dynamic(r) => r.render(vertices, adj, delta)
         }
     }
-    /// Does this block hide adjacent blocks ?
+    fn mesh(&self, vertices: &mut Vec<Vertex>, adj: u8, delta: [u64; 3]) {
+        match self {
+            BlockObj::Gas(g) => g.mesh(vertices, adj, delta),
+            BlockObj::Cube(c) => c.mesh(vertices, adj, delta),
+            BlockObj::Dynamic(r) => r.mesh(vertices, adj, delta)
+        }
+    }
     fn is_opaque(&self) -> bool {
         match self {
             BlockObj::Gas(g) => g.is_opaque(),
             BlockObj::Cube(c) => c.is_opaque(),
             BlockObj::Dynamic(r) => r.is_opaque()
+        }
+    }
+    fn state(&self) -> MatterState {
+        match self {
+            BlockObj::Gas(g) => g.state(),
+            BlockObj::Cube(c) => c.state(),
+            BlockObj::Dynamic(r) => r.state()
         }
     }
 }
@@ -75,7 +102,7 @@ impl From<u16> for BlockId {
 }
 
 impl Block for BlockCube {
-    fn render(&self, vertices: &mut Vec<Vertex>, adj: u8, delta: [u64; 3]) {
+    fn mesh(&self, vertices: &mut Vec<Vertex>, adj: u8, delta: [u64; 3]) {
         for face in 0..6 {
             if adj & (1 << face) > 0 {
                 let side = &FACES[face as usize];
@@ -97,6 +124,10 @@ impl Block for BlockCube {
 
     fn is_opaque(&self) -> bool {
         true
+    }
+
+    fn state(&self) -> MatterState {
+        MatterState::Solid
     }
 }
 
@@ -120,10 +151,14 @@ pub fn create_block_air() -> BlockGas {
 }
 
 impl Block for BlockGas {
-    fn render(&self, _: &mut Vec<Vertex>, _: u8, _: [u64; 3]) {}
+    fn mesh(&self, _: &mut Vec<Vertex>, _: u8, _: [u64; 3]) {}
 
     fn is_opaque(&self) -> bool {
         false
+    }
+
+    fn state(&self) -> MatterState {
+        MatterState::Gas
     }
 }
 
