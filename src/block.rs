@@ -18,7 +18,7 @@ pub trait Block {
 pub struct BlockId(pub u16);
 
 pub struct BlockRegistry {
-    blocks: Vec<BlockRef>,
+    blocks: Vec<BlockObj>,
 }
 
 pub type BlockRef = Box<Block + Send + Sync>;
@@ -58,12 +58,12 @@ impl BlockRegistry {
         BlockRegistry { blocks: Vec::new() }
     }
 
-    pub fn add_block(&mut self, block: BlockRef) -> BlockId {
+    pub fn add_block(&mut self, block: BlockObj) -> BlockId {
         self.blocks.push(block);
         BlockId::from((self.blocks.len() - 1) as u16)
     }
 
-    pub fn get_block(&self, id: BlockId) -> &BlockRef {
+    pub fn get_block(&self, id: BlockId) -> &BlockObj {
         &self.blocks[id.0 as usize]
     }
 }

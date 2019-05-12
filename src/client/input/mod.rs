@@ -224,13 +224,13 @@ impl InputImpl {
         let coal = create_block_cube(["ore_coal"; 6], &texture_registry);
 
         let mut br = BlockRegistry::new();
-        br.add_block(Box::new(air));
-        br.add_block(Box::new(dirt));
-        br.add_block(Box::new(grass));
-        br.add_block(Box::new(wood));
-        br.add_block(Box::new(leaves));
-        br.add_block(Box::new(stone));
-        br.add_block(Box::new(coal));
+        br.add_block(air.into());
+        br.add_block(dirt.into());
+        br.add_block(grass.into());
+        br.add_block(wood.into());
+        br.add_block(leaves.into());
+        br.add_block(stone.into());
+        br.add_block(coal.into());
 
         let br = Arc::new(br);
 

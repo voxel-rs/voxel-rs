@@ -2,7 +2,7 @@
 //! It it used to offload computation-intensive operations from the input thread.
 
 use crate::{
-    block::{BlockRegistry},
+    block::{BlockRegistry, Block},
     core::messages::client::{ToInput, ToMeshing},
     CHUNK_SIZE,
 };

@@ -3,7 +3,7 @@ use crate::client::input::BufferHandle3D;
 use crate::CHUNK_SIZE;
 use crate::Vertex;
 use crate::sim::chunk::ChunkArray;
-use crate::block::{BlockId, BlockRegistry};
+use crate::block::{BlockId, BlockRegistry, Block};
 
 pub type ChunkSidesArray = [[[u8; CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE];
 

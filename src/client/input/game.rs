@@ -1,4 +1,5 @@
 use super::*;
+use crate::block::Block;
 
 use gfx::Device;
 use nalgebra::{convert, Matrix4, Vector3};
