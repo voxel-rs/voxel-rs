@@ -48,7 +48,6 @@ mod simple;
 mod texture;
 mod util;
 mod sim;
-mod utils;
 
 fn main() {
     client::input::start();

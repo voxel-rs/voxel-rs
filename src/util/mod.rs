@@ -1,4 +1,4 @@
-//! A few other helpers.
+pub mod lazy_container;
 
 use ::std::time::{Duration, Instant};
 

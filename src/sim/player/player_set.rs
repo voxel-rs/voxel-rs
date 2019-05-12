@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::ops::Index;
 use std::ops::IndexMut;
 
-use crate::utils::lazy_container::{LazyContainer};
+use crate::util::lazy_container::{LazyContainer};
 
 use serde_derive::{Serialize, Deserialize};
 
