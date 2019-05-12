@@ -11,7 +11,7 @@ impl InputImpl {
                 ToInput::NewChunkFragment(pos, fpos, frag, version) => {
                     if let Some(data) = self.game_state.chunks.get(&pos) {
                         let data = &mut *data.borrow_mut();
-                        let index = fpos.0[0] * 32 + fpos.0[1];
+                        let index = fpos[0] * 32 + fpos[1];
                         // New fragment
                         let not_loaded = data.chunk_info[index / 32] & (1 << (index % 32)) == 0;
 
@@ -27,7 +27,7 @@ impl InputImpl {
 
                         if not_loaded || modified {
                             data.chunk_info[index / 32] |= 1 << (index % 32);
-                            data.chunk.blocks[fpos.0[0]][fpos.0[1]] = *frag;
+                            data.chunk.blocks[fpos[0]][fpos[1]] = *frag;
 
                             // If a new fragment is being loaded in, increment that count
                             if not_loaded {data.fragments += 1;}
@@ -50,10 +50,11 @@ impl InputImpl {
                         }
                     }
                 }
-                ToInput::NewChunkInfo(pos, info) => {
+                ToInput::NewChunkInfo(pos, info, _) => {
                     if let Some(data) = self.game_state.chunks.get(&pos) {
                         let mut data = &mut *data.borrow_mut();
-                        for (from, to) in info.iter().zip(data.chunk_info.iter_mut()) {
+                        for (_, (from, to)) in info.iter().zip(data.chunk_info.iter_mut()).enumerate( ) {
+                            //TODO: fix bug with zeroed fragments...
                             data.fragments -= to.count_ones() as usize;
                             *to |= *from;
                             data.fragments += to.count_ones() as usize;
@@ -86,7 +87,7 @@ impl InputImpl {
                 let adj = ADJ_CHUNKS[face];
                 let mut pos = pos;
                 for i in 0..3 {
-                    pos.0[i] += adj[i];
+                    pos[i] += adj[i];
                 }
                 if let Some(c) = chunks.get(&pos) {
                     let mut adj_chunk = c.borrow_mut();
@@ -121,9 +122,9 @@ impl InputImpl {
         for i in -render_dist..(render_dist + 1) {
             for j in -render_dist..(render_dist + 1) {
                 for k in -render_dist..(render_dist + 1) {
-                    let mut pos = ChunkPos([i, j, k]);
+                    let mut pos : ChunkPos = [i, j, k].into();
                     for x in 0..3 {
-                        pos.0[x] += player_chunk.0[x];
+                        pos[x] += player_chunk[x];
                     }
                     self.game_state
                         .chunks
@@ -250,7 +251,7 @@ impl InputImpl {
             if let ChunkState::Meshed(ref mut buff) = chunk.borrow_mut().state {
                 transform.model = Matrix4::new_translation(
                     &((CHUNK_SIZE as f32)
-                        * &Vector3::<f32>::new(pos.0[0] as f32, pos.0[1] as f32, pos.0[2] as f32)),
+                        * &Vector3::<f32>::new(pos[0] as f32, pos[1] as f32, pos[2] as f32)),
                 )
                 .into();
                 state

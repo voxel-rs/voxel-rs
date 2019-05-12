@@ -1,5 +1,6 @@
 #[macro_use]
 extern crate gfx;
+extern crate num;
 
 // MUST BE A MULTIPLE OF 8 !
 const CHUNK_SIZE: usize = 32;
@@ -41,12 +42,13 @@ mod config;
 mod core;
 mod input;
 mod network;
-mod player;
 mod render;
 mod server;
 mod simple;
 mod texture;
 mod util;
+mod sim;
+mod utils;
 
 fn main() {
     client::input::start();

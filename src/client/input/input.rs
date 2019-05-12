@@ -1,6 +1,6 @@
-use super::ChunkState;
-use crate::player::{PlayerKey, PlayerControls};
+use crate::sim::player::{PlayerKey, PlayerControls};
 use super::*;
+use super::chunk::ChunkState;
 use glutin::dpi::LogicalPosition;
 
 impl InputImpl {
@@ -89,7 +89,7 @@ impl InputImpl {
                     }
                 }
                 ToInput::SetPos(pos) => {
-                    self.input_state.camera.set_pos(pos.0);
+                    self.input_state.camera.set_pos(pos.into());
                 }
                 message @ ToInput::NewChunkFragment(..) | message @ ToInput::NewChunkInfo(..) => {
                     self.pending_messages.push_back(message);

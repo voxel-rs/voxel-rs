@@ -2,10 +2,11 @@
 //! It it used to offload computation-intensive operations from the input thread.
 
 use crate::{
-    block::{BlockRegistry, Chunk},
+    block::{BlockRegistry},
     core::messages::client::{ToInput, ToMeshing},
     CHUNK_SIZE,
 };
+use super::input::chunk::Chunk;
 use std::sync::{
     mpsc::{Receiver, Sender},
     Arc,

@@ -5,7 +5,8 @@ use crate::core::messages::server::{ToGame, ToGamePlayer, ToNetwork};
 use crate::network::{serialize_fragment, ConnectionId, Server};
 use crate::CHUNK_SIZE;
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
+use hashbrown::hash_map::HashMap;
 use std::sync::mpsc::{Receiver, Sender};
 use std::time::Instant;
 
@@ -39,7 +40,7 @@ where
             rx,
             game_tx,
             server,
-            queues: HashMap::new(),
+            queues: HashMap::default(),
         }
     }
 
@@ -69,7 +70,7 @@ where
         // Internal messages
         while let Ok(message) = self.rx.try_recv() {
             let (queue, id) = match &message {
-                &ToNetwork::NewChunk(id, _, _, _) => {
+                &ToNetwork::NewChunk(id, _, _) => {
                     // Enqueue large message for later
                     (true, id)
                 }
@@ -96,20 +97,21 @@ where
             if queue.len() > 0 {
                 // Reply to 1 message
                 match queue.pop_front().unwrap() {
-                    ToNetwork::NewChunk(_, pos, chunk, hot) => {
+                    ToNetwork::NewChunk(_, pos, chunk) => {
                         //println!("[Server] Network: processing chunk @ {:?}", pos);
 
                         let mut info = [0; CHUNK_SIZE * CHUNK_SIZE / 32];
+                        let version = chunk.get_version();
                         for (cx, chunkyz) in chunk.iter().enumerate() {
                             'yiter: for (cy, chunkz) in chunkyz.iter().enumerate() {
                                 for block in chunkz.iter() {
                                     // Only send the message if the ChunkFragment is not empty.
-                                    if hot || (block.0 != 0) {
+                                    if block.0 != 0 {
                                         self.server.send_message(
                                             *id,
                                             bincode::serialize(&ToClient::NewChunkFragment(
                                                 pos.clone(),
-                                                crate::block::FragmentPos([cx, cy]),
+                                                [cx, cy].into(),
                                                 serialize_fragment(&chunkz),
                                                 chunk.get_version()
                                             ))
@@ -125,7 +127,7 @@ where
                             }
                             self.server.send_message(
                                 *id,
-                                bincode::serialize(&ToClient::NewChunkInfo(pos, info)).unwrap(),
+                                bincode::serialize(&ToClient::NewChunkInfo(pos, info, version)).unwrap(),
                             );
                         }
                     }

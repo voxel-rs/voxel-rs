@@ -3,8 +3,9 @@
 pub mod messages {
     /// Client-to-client messages.
     pub mod client {
-        use crate::block::{Chunk, ChunkFragment, ChunkInfo, ChunkPos, FragmentPos};
-        use crate::player::{PlayerInput, PlayerPos};
+        use crate::sim::chunk::{ChunkFragment, ChunkPos, FragmentPos};
+        use crate::client::input::chunk::{Chunk, ChunkInfo};
+        use crate::sim::player::{PlayerInput, PlayerPos};
         use crate::Vertex;
 
         pub enum ToNetwork {
@@ -15,7 +16,7 @@ pub mod messages {
         pub enum ToInput {
             NewChunkBuffer(ChunkPos, Vec<Vertex>),
             NewChunkFragment(ChunkPos, FragmentPos, Box<ChunkFragment>, u64),
-            NewChunkInfo(ChunkPos, ChunkInfo),
+            NewChunkInfo(ChunkPos, ChunkInfo, u64),
             SetPos(PlayerPos),
         }
 
@@ -26,14 +27,15 @@ pub mod messages {
 
     /// Client-to-server and server-to-client messages.
     pub mod network {
-        use crate::block::{ChunkInfo, ChunkPos, FragmentPos};
-        use crate::player::{PlayerInput, PlayerPos};
+        use crate::sim::chunk::{ChunkPos, FragmentPos};
+        use crate::sim::player::{PlayerInput, PlayerPos};
+        use crate::client::input::chunk::{ChunkInfo};
         use serde_derive::{Deserialize, Serialize};
 
         #[derive(Serialize, Deserialize)]
         pub enum ToClient {
             NewChunkFragment(ChunkPos, FragmentPos, Vec<u8>, u64),
-            NewChunkInfo(ChunkPos, ChunkInfo),
+            NewChunkInfo(ChunkPos, ChunkInfo, u64),
             SetPos(PlayerPos),
         }
 
@@ -46,13 +48,12 @@ pub mod messages {
 
     /// Server-to-server messages.
     pub mod server {
-        use crate::block::ChunkContents;
-        use crate::block::ChunkPos;
+        use crate::sim::chunk::{ChunkContents, ChunkPos};
         use crate::network::ConnectionId;
-        use crate::player::{PlayerInput, PlayerPos};
+        use crate::sim::player::{PlayerInput, PlayerPos};
 
         pub enum ToNetwork {
-            NewChunk(ConnectionId, ChunkPos, ChunkContents, bool),
+            NewChunk(ConnectionId, ChunkPos, ChunkContents),
             SetPos(ConnectionId, PlayerPos),
         }
 

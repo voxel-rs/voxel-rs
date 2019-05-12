@@ -90,10 +90,10 @@ where
                                 ))
                                 .unwrap();
                         }
-                        ToClient::NewChunkInfo(pos, info) => {
+                        ToClient::NewChunkInfo(pos, info, version) => {
                             //println!("Received ChunkInfo @ {:?}", pos);
                             self.input_tx
-                                .send(ToInput::NewChunkInfo(pos, info))
+                                .send(ToInput::NewChunkInfo(pos, info, version))
                                 .unwrap();
                         }
                         ToClient::SetPos(pos) => {
