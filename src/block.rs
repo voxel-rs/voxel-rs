@@ -1,10 +1,11 @@
 //! Various `Block`- and `Chunk`-related data structures.
 
-use std::collections::hash_map::Entry;
 use crate::texture::TextureRegistry;
 use crate::{Vertex, CHUNK_SIZE};
 use serde_derive::{Deserialize, Serialize};
-use std::collections::HashMap;
+use hashbrown::hash_map::HashMap;
+use hashbrown::hash_map::Entry;
+use hashbrown::hash_map::DefaultHashBuilder;
 
 /// Block representation
 pub trait Block {
@@ -76,7 +77,7 @@ impl ChunkMap {
         self.map.get(pos)
     }
 
-    pub fn entry(&mut self, pos : ChunkPos) -> Entry<ChunkPos, ChunkState> {
+    pub fn entry(&mut self, pos : ChunkPos) -> Entry<ChunkPos, ChunkState, DefaultHashBuilder> {
         self.map.entry(pos)
     }
 

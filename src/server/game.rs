@@ -144,35 +144,40 @@ impl GameImpl {
                 }
 
                 // Entry manipulation
-                use std::collections::hash_map::Entry;
                 let player_entry = player.chunks.entry(pos);
-                if let Entry::Occupied(_) = player_entry {
-                    if !chunks.is_hot(&pos) {
-                        continue;
+                {
+                    use std::collections::hash_map::Entry;
+                    if let Entry::Occupied(_) = player_entry {
+                        if !chunks.is_hot(&pos) {
+                            continue;
+                        }
                     }
                 }
 
                 // At this point, the player doesn't have the chunk.
-                match chunks.entry(pos) {
-                    Entry::Vacant(v) => {
-                        // Generate it
-                        v.insert(ChunkState::Generating);
-                        self.worldgen_tx
-                            .send(ToWorldgen::GenerateChunk(pos))
-                            .unwrap();
-                    }
-                    Entry::Occupied(o) => {
-                        let contents : Option<ChunkContents> = o.get().clone().into();
-                        match contents {
-                            None => (),
-                            Some(c) => {
-                                network_tx
-                                    .send(ToNetwork::NewChunk(*id, pos, c, chunks.is_hot(&pos)))
-                                    .unwrap();
-                                player_entry.or_insert(());
-                            }
+                {
+                    use hashbrown::hash_map::Entry;
+                    match chunks.entry(pos) {
+                        Entry::Vacant(v) => {
+                            // Generate it
+                            v.insert(ChunkState::Generating);
+                            self.worldgen_tx
+                                .send(ToWorldgen::GenerateChunk(pos))
+                                .unwrap();
                         }
-                    },
+                        Entry::Occupied(o) => {
+                            let contents : Option<ChunkContents> = o.get().clone().into();
+                            match contents {
+                                None => (),
+                                Some(c) => {
+                                    network_tx
+                                        .send(ToNetwork::NewChunk(*id, pos, c, chunks.is_hot(&pos)))
+                                        .unwrap();
+                                    player_entry.or_insert(());
+                                }
+                            }
+                        },
+                    }
                 }
             }
             // Remove chunks that are too far away
