@@ -23,6 +23,8 @@ serde_derive = "^1.0"
 toml = "^0.4"
 bincode = "^1.1"
 net2 = "^0.2"
+hashbrown = "^0.3.0"
+
 
 [patch.crates-io]
 cobalt = { git = 'https://github.com/Technici4n/cobalt-rs' }
