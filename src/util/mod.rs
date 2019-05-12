@@ -1,6 +1,6 @@
-pub mod lazy_container;
-
 use ::std::time::{Duration, Instant};
+
+pub mod lazy_container;
 
 pub struct Ticker {
     tick_duration: Duration,
