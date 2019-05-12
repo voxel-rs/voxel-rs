@@ -2,6 +2,7 @@
 use crate::texture::TextureRegistry;
 use crate::Vertex;
 use serde_derive::{Deserialize, Serialize};
+use derive_more::{From};
 
 /// Block representation
 pub trait Block {
@@ -22,11 +23,36 @@ pub struct BlockRegistry {
 
 pub type BlockRef = Box<Block + Send + Sync>;
 
+#[derive(From)]
+pub enum BlockObj {
+    Gas(BlockGas),
+    Cube(BlockCube),
+    Dynamic(BlockRef)
+}
+
+impl Block for BlockObj {
+    fn render(&self, vertices: &mut Vec<Vertex>, adj: u8, delta: [u64; 3]) {
+        match self {
+            BlockObj::Gas(g) => g.render(vertices, adj, delta),
+            BlockObj::Cube(c) => c.render(vertices, adj, delta),
+            BlockObj::Dynamic(r) => r.render(vertices, adj, delta)
+        }
+    }
+    /// Does this block hide adjacent blocks ?
+    fn is_opaque(&self) -> bool {
+        match self {
+            BlockObj::Gas(g) => g.is_opaque(),
+            BlockObj::Cube(c) => c.is_opaque(),
+            BlockObj::Dynamic(r) => r.is_opaque()
+        }
+    }
+}
+
 pub struct BlockCube {
     uvs: [[[f32; 2]; 4]; 6],
 }
 
-pub struct BlockAir {}
+pub struct BlockGas {}
 impl BlockRegistry {
     pub fn new() -> BlockRegistry {
         BlockRegistry { blocks: Vec::new() }
@@ -89,11 +115,11 @@ pub fn create_block_cube(texture_names: [&str; 6], textures: &TextureRegistry) -
 }
 
 /// Create an air block
-pub fn create_block_air() -> BlockAir {
-    BlockAir {}
+pub fn create_block_air() -> BlockGas {
+    BlockGas {}
 }
 
-impl Block for BlockAir {
+impl Block for BlockGas {
     fn render(&self, _: &mut Vec<Vertex>, _: u8, _: [u64; 3]) {}
 
     fn is_opaque(&self) -> bool {
