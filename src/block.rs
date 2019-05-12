@@ -8,9 +8,7 @@ use derive_more::{From};
 pub trait Block {
     /// Append the block's vertices to the rendering Vertex Buffers
     /// TODO: Use the Vertex type instead of Vec<>
-    fn render(&self, vertices: &mut Vec<Vertex>, adj: u8, delta: [u64; 3]) {
-        self.render(vertices, adj, delta)
-    }
+    fn render(&self, vertices: &mut Vec<Vertex>, adj: u8, delta: [u64; 3]);
     /// Does this block hide adjacent blocks ?
     fn is_opaque(&self) -> bool;
     /// What state of matter is this block (matters for physics)
