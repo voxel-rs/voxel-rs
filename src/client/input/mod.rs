@@ -25,8 +25,7 @@ use crate::block::{
 use crate::sim::chunk::{
     ChunkPos
 };
-use self::chunk::{ChunkData, ChunkState};
-use crate::sim::chunk::Chunk;
+use self::chunk::{Chunk, ChunkData, ChunkState};
 use crate::config::{load_config, Config};
 use crate::core::messages::client::{ToInput, ToMeshing, ToNetwork};
 use crate::input::KeyboardState;

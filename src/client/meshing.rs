@@ -4,9 +4,9 @@
 use crate::{
     block::{BlockRegistry, Block},
     core::messages::client::{ToInput, ToMeshing},
-    sim::chunk::Chunk,
     CHUNK_SIZE,
 };
+use super::input::chunk::Chunk;
 use std::sync::{
     mpsc::{Receiver, Sender},
     Arc,
