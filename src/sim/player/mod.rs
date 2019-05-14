@@ -3,7 +3,7 @@
 use std::ops::{Index, IndexMut};
 use glutin::ElementState;
 use std::ops::BitOrAssign;
-use super::chunk::{ChunkMap, ChunkPos, InnerChunkPos, ChunkState, WorldPos, SubIndex};
+use super::chunk::{map::ChunkMap, ChunkPos, InnerChunkPos, ChunkState, WorldPos, SubIndex};
 use crate::block::BlockId;
 use crate::config::Config;
 use nalgebra::Vector3;

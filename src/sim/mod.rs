@@ -2,7 +2,7 @@ pub mod worldgen;
 pub mod player;
 pub mod chunk;
 
-use self::chunk::ChunkMap;
+use self::chunk::map::ChunkMap;
 use self::player::PlayerSet;
 
 pub struct World {

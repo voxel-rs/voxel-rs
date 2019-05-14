@@ -436,6 +436,9 @@ dependencies = [
 name = "hashbrown"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "serde 1.0.91 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "image"
