@@ -17,7 +17,7 @@ pub fn start(rx: Receiver<ToWorldgen>, game_tx: Sender<ToGame>) {
         match message {
             ToWorldgen::GenerateChunk(pos) => {
                 game_tx
-                    .send(ToGame::NewChunk(pos, ChunkContents::Generated(generator.generate(pos)), false))
+                    .send(ToGame::NewChunk(pos, ChunkContents(generator.generate(pos), 0), false))
                     .unwrap();
             }
         }

@@ -4,7 +4,8 @@ pub mod messages {
     /// Client-to-client messages.
     pub mod client {
         use crate::sim::chunk::{ChunkFragment, ChunkPos, FragmentPos};
-        use crate::client::input::chunk::{Chunk, ChunkInfo};
+        use crate::client::input::chunk::ChunkInfo;
+        use crate::sim::chunk::Chunk;
         use crate::sim::player::{PlayerInput, PlayerPos};
         use crate::Vertex;
 
