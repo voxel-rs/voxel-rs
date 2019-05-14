@@ -1,6 +1,6 @@
 //! The game thread is the main server thread. It is authoritative over the game.
 
-use crate::sim::chunk::{ChunkContents, ChunkPos, ChunkState};
+use crate::sim::chunk::{ChunkPos, ChunkState};
 use crate::config::Config;
 use crate::core::messages::server::{ToGame, ToNetwork, ToWorldgen};
 use crate::network::ConnectionId;
@@ -93,8 +93,15 @@ impl GameImpl {
                 }
             },
             ToGame::NewChunk(pos, s, _) => {
-                if let Some(state) = self.world.chunks.get_mut(&pos) {
-                    *state = s.into();
+                use hashbrown::hash_map::Entry;
+                match self.world.chunks.entry(pos) {
+                    Entry::Occupied(mut o) => {
+                        let c = o.get_mut();
+                        if !c.is_generated() {
+                            *c = ChunkState::Generated(s.into())
+                        }
+                    },
+                    Entry::Vacant(v) => {v.insert(ChunkState::Generated(s.into()));}
                 }
             }
         }
@@ -176,13 +183,12 @@ impl GameImpl {
                             .unwrap();
                     },
                     Entry::Occupied(o) => {
-                        let contents : Option<ChunkContents> = o.get().clone().into();
-                        match contents {
-                            None => (),
-                            Some(c) => {
+                        match o.get() {
+                            ChunkState::Generating => {}
+                            ChunkState::Generated(c) => {
                                 player_entry.or_insert(c.get_version());
                                 network_tx
-                                    .send(ToNetwork::NewChunk(*id, pos, c))
+                                    .send(ToNetwork::NewChunk(*id, pos, c.clone_contents()))
                                     .unwrap();
                             }
                         }
