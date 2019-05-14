@@ -96,10 +96,7 @@ impl GameImpl {
                 use hashbrown::hash_map::Entry;
                 match self.world.chunks.entry(pos) {
                     Entry::Occupied(mut o) => {
-                        let c = o.get_mut();
-                        if !c.is_generated() {
-                            *c = ChunkState::Generated(s.into())
-                        }
+                        o.get_mut().update_worldgen(s);
                     },
                     Entry::Vacant(v) => {v.insert(ChunkState::Generated(s.into()));}
                 }

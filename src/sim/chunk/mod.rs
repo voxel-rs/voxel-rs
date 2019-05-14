@@ -116,4 +116,12 @@ impl ChunkState {
         }
     }
 
+    /// Update with newly-generated chunk if not already generated. Return whether an update occured
+    pub fn update_worldgen<T : Into<Chunk>>(&mut self, chunk : T) -> bool {
+        if !self.is_generated() {
+            *self = ChunkState::Generated(chunk.into());
+            true
+        } else {false}
+    }
+
 }
