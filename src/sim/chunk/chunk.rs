@@ -1,7 +1,7 @@
 use super::*;
 
 /// A server-side chunk
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Clone)]
 pub struct Chunk {
     /// An array containing the blocks of this chunk
     blocks : Box<ChunkArray>,

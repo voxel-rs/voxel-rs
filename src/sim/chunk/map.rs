@@ -1,13 +1,11 @@
 use super::{ChunkPos, InnerChunkPos, ChunkState};
 use crate::block::BlockId;
 
-use serde_derive::{Deserialize, Serialize};
-
 use hashbrown::hash_map::HashMap;
 use hashbrown::hash_map::Entry;
 use hashbrown::hash_map::DefaultHashBuilder;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone)]
 pub struct ChunkMap{
     map : HashMap<ChunkPos, ChunkState>
 }

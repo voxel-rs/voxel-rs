@@ -15,7 +15,7 @@ pub use chunk::*;
 
 pub mod map;
 
-#[derive(From, Debug, Serialize, Deserialize, Clone)]
+#[derive(From, Clone)]
 pub enum ChunkState {
     Generating,
     Generated(Chunk)
