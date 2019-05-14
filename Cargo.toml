@@ -28,6 +28,3 @@ ncollide3d = "^0.19"
 nphysics3d = "^0.11"
 num = "^0.2"
 derive_more = "^0.14"
-
-[patch.crates-io]
-cobalt = { git = 'https://github.com/Technici4n/cobalt-rs' }
