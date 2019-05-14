@@ -13,6 +13,15 @@ pub trait Block {
     fn is_opaque(&self) -> bool;
     /// What state of matter is this block (matters for physics)
     fn state(&self) -> MatterState;
+    /// What shape this block's collider is (for now only cubes are supported)
+    fn shape(&self) -> BlockShape {
+        BlockShape::Cube
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
+pub enum BlockShape {
+    Cube
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
