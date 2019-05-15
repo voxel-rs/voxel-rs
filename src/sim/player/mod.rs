@@ -45,6 +45,7 @@ impl FromMouse for PlayerControls {
 /// A player's inputs
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PlayerInput {
+    /// The keys the player has pressed down
     pub keys: PlayerControls,
     /// Yaw in degrees
     pub yaw: f64,
@@ -59,12 +60,16 @@ pub struct Player {
     pub yaw: f64,
     /// Pitch in degrees
     pub pitch: f64,
+    /// The render distance for this player
     pub render_distance: u64,
+    /// The keys the player has pressed down
     pub keys: PlayerControls,
-    // Player ID
+    /// Player ID
     pub id: PlayerId,
-    // Whether this player is active
-    pub active : bool
+    /// Whether this player is active
+    pub active : bool,
+    /// Whether this player has physics enabled
+    pub physics : bool
 }
 
 impl Player {
@@ -77,7 +82,8 @@ impl Player {
             render_distance: 0,
             keys: PlayerControls::new(),
             id : id,
-            active : active
+            active : active,
+            physics : false
         }
     }
 
@@ -95,6 +101,11 @@ impl Player {
         let mut speedup = 1.0;
         if self.keys.contains(PlayerKey::Control) {
             speedup = config.ctrl_speedup;
+            self.physics = false;
+        }
+        if self.keys.contains(PlayerKey::PhysicsEnable) {
+            println!("Physics on!");
+            self.physics = true;
         }
 
         let old_pos = self.pos.clone();
