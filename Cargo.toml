@@ -25,6 +25,10 @@ net2 = "^0.2"
 num = "^0.2"
 derive_more = "^0.14"
 
+[dependencies.enumset]
+version = "^0.4.0"
+features = ["serde"]
+
 [dependencies.nalgebra]
 version = "^0.18"
 features = ["serde-serialize"]

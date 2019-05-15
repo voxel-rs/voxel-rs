@@ -1,20 +1,19 @@
 //! `Player`-related data structures.
 
 use glutin::ElementState;
-use std::ops::BitOrAssign;
 use super::chunk::{map::ChunkMap, ChunkPos, InnerChunkPos, ChunkState, WorldPos, SubIndex};
 use crate::block::BlockId;
 use crate::config::Config;
 use nalgebra::Vector3;
 use serde_derive::{Deserialize, Serialize};
-use std::ops::BitOr;
+use enumset::{EnumSet, EnumSetType};
 
 mod player_set;
 pub use player_set::PlayerSet;
 pub use player_set::PlayerId;
 
-// Invidual key controls
-#[derive(Debug, Clone, Copy)]
+/// Invidual key controls
+#[derive(Debug, Serialize, Deserialize, EnumSetType)]
 pub enum PlayerKey {
     Forward,
     Left,
@@ -23,60 +22,23 @@ pub enum PlayerKey {
     Up,
     Down,
     Control,
-    Hit
+    Hit,
+    PhysicsEnable
 }
 
-// A player's currentcontrols
-#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
-pub struct PlayerControls {
-    keys : u8
+/// A player's current controls
+pub type PlayerControls = EnumSet<PlayerKey>;
+
+pub trait FromMouse {
+    fn mouse(mouse_state : ElementState) -> Self;
 }
 
-impl PlayerControls {
-    fn key_bitmap(addr : u32) -> PlayerControls {
-        PlayerControls{
-            keys : (1 << addr) as u8
-        }
-    }
-    fn get_bitmap(self, addr : u32) -> bool {
-        (self.keys & ((1 << addr) as u8)) > 0
-    }
-
-    pub fn none() -> PlayerControls {
-        PlayerControls { keys : 0 }
-    }
-
-    pub fn pressed(self, key : PlayerKey) -> bool {
-        self.get_bitmap(key as u32)
-    }
-
-    pub fn mouse(mouse_state : ElementState) -> PlayerControls {
+impl FromMouse for PlayerControls {
+    fn mouse(mouse_state : ElementState) -> PlayerControls {
         match mouse_state {
             ElementState::Pressed => PlayerKey::Hit.into(),
-            _ => PlayerControls::none()
+            _ => PlayerControls::new()
         }
-    }
-}
-
-impl From<PlayerKey> for PlayerControls {
-    fn from(key : PlayerKey) -> PlayerControls {
-        return PlayerControls::key_bitmap(key as u32);
-    }
-}
-
-impl BitOr for PlayerControls {
-    type Output = PlayerControls;
-
-    fn bitor(self, other : PlayerControls) -> PlayerControls {
-        PlayerControls {
-            keys : self.keys | other.keys
-        }
-    }
-}
-
-impl BitOrAssign for PlayerControls {
-    fn bitor_assign(&mut self, rhs : Self) {
-        self.keys |= rhs.keys;
     }
 }
 
@@ -113,7 +75,7 @@ impl Player {
             yaw: 0.0,
             pitch: 0.0,
             render_distance: 0,
-            keys: PlayerControls::none(),
+            keys: PlayerControls::new(),
             id : id,
             active : active
         }
@@ -131,31 +93,31 @@ impl Player {
         if !self.active {return;}
 
         let mut speedup = 1.0;
-        if self.keys.pressed(PlayerKey::Control) {
+        if self.keys.contains(PlayerKey::Control) {
             speedup = config.ctrl_speedup;
         }
 
         let old_pos = self.pos.clone();
-        if self.keys.pressed(PlayerKey::Forward) {
+        if self.keys.contains(PlayerKey::Forward) {
             self.pos += speedup * self.mv_direction(0.0) * (config.player_speed * dt);
         }
-        if self.keys.pressed(PlayerKey::Left) {
+        if self.keys.contains(PlayerKey::Left) {
             self.pos += speedup * self.mv_direction(90.0) * (config.player_speed * dt);
         }
-        if self.keys.pressed(PlayerKey::Backward) {
+        if self.keys.contains(PlayerKey::Backward) {
             self.pos += speedup * self.mv_direction(180.0) * (config.player_speed * dt);
         }
-        if self.keys.pressed(PlayerKey::Right) {
+        if self.keys.contains(PlayerKey::Right) {
             self.pos += speedup * self.mv_direction(270.0) * (config.player_speed * dt);
         }
-        if self.keys.pressed(PlayerKey::Up) {
+        if self.keys.contains(PlayerKey::Up) {
             self.pos.y += speedup * config.player_speed * dt;
         }
-        if self.keys.pressed(PlayerKey::Down) {
+        if self.keys.contains(PlayerKey::Down) {
             self.pos.y -= speedup * config.player_speed * dt;
         }
 
-        if self.keys.pressed(PlayerKey::Hit) {
+        if self.keys.contains(PlayerKey::Hit) {
             self.handle_hit(dt, config, world);
         }
 

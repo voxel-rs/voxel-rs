@@ -1,4 +1,4 @@
-use crate::sim::player::{PlayerKey, PlayerControls};
+use crate::sim::player::{PlayerKey, PlayerControls, FromMouse};
 use crate::sim::chunk::SubIndex;
 use super::*;
 use super::chunk::ChunkState;
@@ -124,26 +124,26 @@ impl InputImpl {
                 let ks = &input_state.keyboard_state;
                 let mut mask = PlayerControls::mouse(input_state.mouse_state);
                 if ks.is_key_pressed(MOVE_FORWARD) {
-                    mask |= PlayerKey::Forward.into()
+                    mask |= PlayerKey::Forward
                 }
                 if ks.is_key_pressed(MOVE_LEFT) {
-                    mask |= PlayerKey::Left.into()
+                    mask |= PlayerKey::Left
                 }
                 if ks.is_key_pressed(MOVE_BACKWARD) {
-                    mask |= PlayerKey::Backward.into()
+                    mask |= PlayerKey::Backward
                 }
                 if ks.is_key_pressed(MOVE_RIGHT) {
-                    mask |= PlayerKey::Right.into()
+                    mask |= PlayerKey::Right
                 }
 
                 if ks.is_key_pressed(MOVE_UP) {
-                    mask |= PlayerKey::Up.into()
+                    mask |= PlayerKey::Up
                 }
                 if ks.is_key_pressed(MOVE_DOWN) {
-                    mask |= PlayerKey::Down.into()
+                    mask |= PlayerKey::Down
                 }
                 if ks.is_key_pressed(CONTROL) {
-                    mask |= PlayerKey::Control.into()
+                    mask |= PlayerKey::Control
                 }
                 mask
             };
