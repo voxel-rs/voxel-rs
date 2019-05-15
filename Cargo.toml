@@ -15,7 +15,6 @@ glutin = "^0.19"
 gfx_window_glutin = "^0.29"
 image = "^0.21"
 texture_packer = "^0.16"
-nalgebra = "^0.18"
 noise = "^0.5"
 rand = "^0.6"
 serde = "^1.0"
@@ -25,6 +24,10 @@ bincode = "^1.1"
 net2 = "^0.2"
 num = "^0.2"
 derive_more = "^0.14"
+
+[dependencies.nalgebra]
+version = "^0.18"
+features = ["serde-serialize"]
 
 [dependencies.hashbrown]
 version = "^0.3.0"
