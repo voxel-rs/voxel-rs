@@ -1,6 +1,7 @@
 pub mod worldgen;
 pub mod player;
 pub mod chunk;
+pub mod physics;
 
 use self::chunk::map::ChunkMap;
 use self::player::PlayerSet;
