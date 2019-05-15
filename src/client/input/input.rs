@@ -145,6 +145,9 @@ impl InputImpl {
                 if ks.is_key_pressed(CONTROL) {
                     mask |= PlayerKey::Control
                 }
+                if ks.is_key_pressed(PHYSICS_ENABLE) {
+                    mask |= PlayerKey::PhysicsEnable;
+                }
                 mask
             };
             let yp = input_state.camera.get_yaw_pitch();

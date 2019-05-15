@@ -12,6 +12,7 @@ pub const MOVE_RIGHT: u32 = 32;
 pub const MOVE_UP: u32 = 57;
 pub const MOVE_DOWN: u32 = 42;
 pub const CONTROL: u32 = 29;
+pub const PHYSICS_ENABLE : u32 = 25; // P
 
 pub struct Camera {
     position: Vector3<f64>,
