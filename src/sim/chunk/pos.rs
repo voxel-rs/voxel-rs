@@ -22,9 +22,10 @@ pub trait SubIndex<T> {
 #[derive(
     PartialEq, Clone, Copy, Debug, From,
     Add, Sub, Mul, Rem, Div, Index, IndexMut,
-    AddAssign, SubAssign, MulAssign, DivAssign, RemAssign
+    AddAssign, SubAssign, MulAssign, DivAssign, RemAssign,
+    Serialize, Deserialize
 )]
-pub struct WorldPos(Vector3<f64>);
+pub struct WorldPos(pub Vector3<f64>);
 
 impl SubIndex<BlockPos> for WorldPos {
     type Remainder = InnerBlockPos;
@@ -34,7 +35,7 @@ impl SubIndex<BlockPos> for WorldPos {
     }
 
     fn low(&self) -> InnerBlockPos {
-        let block = self.high();
+        let block : BlockPos = self.high();
         let inner : Vector3<f64> = [
                 self[0] - (block[0] as f64),
                 self[1] - (block[1] as f64),
@@ -43,6 +44,29 @@ impl SubIndex<BlockPos> for WorldPos {
         inner.into()
     }
 
+}
+
+impl SubIndex<ChunkPos> for WorldPos {
+    type Remainder = InnerChunkPos;
+
+    fn high(&self) -> ChunkPos {
+        use crate::CHUNK_SIZE;
+        let mut ret : ChunkPos = [0, 0, 0].into();
+        for i in 0..3 {
+            ret[i] = self[i] as i64 / CHUNK_SIZE as i64
+                - if (self[i] as i64 % CHUNK_SIZE as i64) < 0 {
+                    1
+                } else {
+                    0
+                };
+        }
+        ret
+    }
+    
+    fn low(&self) -> InnerChunkPos {
+        let bp : BlockPos = self.high();
+        bp.low()
+    }
 }
 
 #[derive(

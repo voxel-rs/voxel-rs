@@ -1,6 +1,5 @@
 //! `Player`-related data structures.
 
-use std::ops::{Index, IndexMut};
 use glutin::ElementState;
 use std::ops::BitOrAssign;
 use super::chunk::{map::ChunkMap, ChunkPos, InnerChunkPos, ChunkState, WorldPos, SubIndex};
@@ -9,87 +8,10 @@ use crate::config::Config;
 use nalgebra::Vector3;
 use serde_derive::{Deserialize, Serialize};
 use std::ops::BitOr;
-use derive_more::{
-    Add, Sub, Rem, Div, Mul,
-    AddAssign, SubAssign, MulAssign, DivAssign, RemAssign, From
-};
 
 mod player_set;
 pub use player_set::PlayerSet;
 pub use player_set::PlayerId;
-
-#[derive(
-    PartialEq, Clone, Copy, Debug, From, Serialize, Deserialize,
-    Add, Sub, Mul, Rem, Div,
-    AddAssign, SubAssign, MulAssign, DivAssign, RemAssign
-)]
-pub struct PlayerPos{
-    pub x : f64, pub y : f64, pub z : f64
-}
-
-impl From<[f64; 3]> for PlayerPos {
-    fn from(pos : [f64; 3]) -> PlayerPos {
-        (pos[0], pos[1], pos[2]).into()
-    }
-}
-
-impl From<Vector3<f64>> for PlayerPos {
-    fn from(pos : Vector3<f64>) -> PlayerPos {
-        (pos[0], pos[1], pos[2]).into()
-    }
-}
-
-impl From<WorldPos> for PlayerPos {
-    fn from(pos : WorldPos) -> PlayerPos {
-        [pos[0], pos[1], pos[2]].into()
-    }
-}
-
-impl Index<usize> for PlayerPos {
-    type Output = f64;
-
-    fn index(&self, idx : usize) -> &f64 {
-        match idx {
-            0 => &self.x,
-            1 => &self.y,
-            2 => &self.z,
-            _ => panic!("Index out of bounds!")
-        }
-    }
-}
-
-impl IndexMut<usize> for PlayerPos {
-    fn index_mut(&mut self, idx : usize) -> &mut f64 {
-        match idx {
-            0 => &mut self.x,
-            1 => &mut self.y,
-            2 => &mut self.z,
-            _ => panic!("Index out of bounds!")
-        }
-    }
-}
-
-impl Into<[f64; 3]> for PlayerPos {
-    fn into(self) -> [f64; 3] {
-        [self[0], self[1], self[2]]
-    }
-}
-
-
-impl Into<Vector3<f64>> for PlayerPos {
-    fn into(self) -> Vector3<f64> {
-        [self[0], self[1], self[2]].into()
-    }
-}
-
-impl Into<WorldPos> for PlayerPos {
-    fn into(self) -> WorldPos {
-        let v : Vector3<f64> = self.into();
-        v.into()
-    }
-}
-
-
 
 // Invidual key controls
 #[derive(Debug, Clone, Copy)]
@@ -198,7 +120,9 @@ impl Player {
     }
 
     fn handle_hit(&mut self, _dt: f64, _config: &Config, world: &mut ChunkMap) {
-        world.set(self.get_pos().chunk_pos(), self.get_pos().inner_chunk_pos(), BlockId::from(0))
+        let p = self.get_pos();
+        let (h, l) : (ChunkPos, InnerChunkPos) = p.factor();
+        world.set(h, l, BlockId::from(0))
     }
 
     pub fn tick(&mut self, dt: f64, config: &Config, world: &mut ChunkMap) {
@@ -235,7 +159,7 @@ impl Player {
             self.handle_hit(dt, config, world);
         }
 
-        let chunk_pos = self.get_pos().chunk_pos();
+        let chunk_pos : ChunkPos = self.get_pos().high();
         // Can't move to an unloaded chunk
         if !world.contains_key(&chunk_pos) {
             self.pos = old_pos;
@@ -249,7 +173,7 @@ impl Player {
         Vector3::new(-yaw.to_radians().sin(), 0.0, -yaw.to_radians().cos()).normalize()
     }
 
-    pub fn get_pos(&self) -> PlayerPos {
+    pub fn get_pos(&self) -> WorldPos {
         self.pos.into()
     }
 
@@ -257,25 +181,5 @@ impl Player {
         self.keys = input.keys;
         self.yaw = input.yaw;
         self.pitch = input.pitch;
-    }
-}
-
-impl PlayerPos {
-    pub fn chunk_pos(self) -> ChunkPos {
-        use crate::CHUNK_SIZE;
-        let mut ret : ChunkPos = [0, 0, 0].into();
-        for i in 0..3 {
-            ret[i] = self[i] as i64 / CHUNK_SIZE as i64
-                - if (self[i] as i64 % CHUNK_SIZE as i64) < 0 {
-                    1
-                } else {
-                    0
-                };
-        }
-        ret
-    }
-    pub fn inner_chunk_pos(self) -> InnerChunkPos {
-        let wp : WorldPos = self.into();
-        wp.high().low()
     }
 }

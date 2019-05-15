@@ -3,9 +3,9 @@
 pub mod messages {
     /// Client-to-client messages.
     pub mod client {
-        use crate::sim::chunk::{ChunkFragment, ChunkPos, FragmentPos};
+        use crate::sim::chunk::{ChunkFragment, ChunkPos, FragmentPos, WorldPos};
         use crate::client::input::chunk::{Chunk, ChunkInfo};
-        use crate::sim::player::{PlayerInput, PlayerPos};
+        use crate::sim::player::{PlayerInput};
         use crate::Vertex;
 
         pub enum ToNetwork {
@@ -17,7 +17,7 @@ pub mod messages {
             NewChunkBuffer(ChunkPos, Vec<Vertex>),
             NewChunkFragment(ChunkPos, FragmentPos, Box<ChunkFragment>, u64),
             NewChunkInfo(ChunkPos, ChunkInfo, u64),
-            SetPos(PlayerPos),
+            SetPos(WorldPos),
         }
 
         pub enum ToMeshing {
@@ -27,8 +27,8 @@ pub mod messages {
 
     /// Client-to-server and server-to-client messages.
     pub mod network {
-        use crate::sim::chunk::{ChunkPos, FragmentPos};
-        use crate::sim::player::{PlayerInput, PlayerPos};
+        use crate::sim::chunk::{ChunkPos, FragmentPos, WorldPos};
+        use crate::sim::player::PlayerInput;
         use crate::client::input::chunk::{ChunkInfo};
         use serde_derive::{Deserialize, Serialize};
 
@@ -36,7 +36,7 @@ pub mod messages {
         pub enum ToClient {
             NewChunkFragment(ChunkPos, FragmentPos, Vec<u8>, u64),
             NewChunkInfo(ChunkPos, ChunkInfo, u64),
-            SetPos(PlayerPos),
+            SetPos(WorldPos),
         }
 
         #[derive(Serialize, Deserialize)]
@@ -48,13 +48,13 @@ pub mod messages {
 
     /// Server-to-server messages.
     pub mod server {
-        use crate::sim::chunk::{ChunkContents, ChunkPos};
+        use crate::sim::chunk::{ChunkContents, ChunkPos, WorldPos};
         use crate::network::ConnectionId;
-        use crate::sim::player::{PlayerInput, PlayerPos};
+        use crate::sim::player::PlayerInput;
 
         pub enum ToNetwork {
             NewChunk(ConnectionId, ChunkPos, ChunkContents),
-            SetPos(ConnectionId, PlayerPos),
+            SetPos(ConnectionId, WorldPos),
         }
 
         #[derive(Debug)]

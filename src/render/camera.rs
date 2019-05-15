@@ -1,7 +1,7 @@
 //! Camera.
 
 use crate::config::Config;
-use crate::sim::player::PlayerPos;
+use crate::sim::chunk::WorldPos;
 use nalgebra::{Matrix4, Perspective3, Vector3};
 
 // TODO: Don't hardcode this
@@ -70,12 +70,12 @@ impl Camera {
         proj.as_matrix() * rotation * translation
     }
 
-    pub fn get_pos(&self) -> PlayerPos {
+    pub fn get_pos(&self) -> WorldPos {
         self.position.into()
     }
 
-    pub fn set_pos(&mut self, new_pos: [f64; 3]) {
-        self.position = new_pos.into();
+    pub fn set_pos(&mut self, new_pos: Vector3<f64>) {
+        self.position = new_pos;
     }
 
     pub fn get_cam_dir(&self) -> Vector3<f64> {

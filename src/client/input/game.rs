@@ -1,5 +1,7 @@
 use super::*;
 use crate::block::Block;
+use crate::sim::chunk::SubIndex;
+
 
 use gfx::Device;
 use nalgebra::{convert, Matrix4, Vector3};
@@ -113,7 +115,7 @@ impl InputImpl {
 
     /// Add close chunks to the HashMap, drop far chunks, mesh ready chunks
     pub fn fetch_close_chunks(&mut self) {
-        let player_chunk = self.input_state.camera.get_pos().chunk_pos();
+        let player_chunk : ChunkPos = self.input_state.camera.get_pos().high();
 
         // Fetch new close chunks
         // render_distance+2 because we need to store information about the adjacent chunks

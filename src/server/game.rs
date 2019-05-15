@@ -1,6 +1,6 @@
 //! The game thread is the main server thread. It is authoritative over the game.
 
-use crate::sim::chunk::{ChunkPos, ChunkState};
+use crate::sim::chunk::{ChunkPos, ChunkState, SubIndex};
 use crate::config::Config;
 use crate::core::messages::server::{ToGame, ToNetwork, ToWorldgen};
 use crate::network::ConnectionId;
@@ -138,7 +138,7 @@ impl GameImpl {
             let d = render_distance as i64;
             let p = players[*player].get_pos();
             // player_chunk
-            let pc = p.chunk_pos();
+            let pc : ChunkPos = p.high();
             for x in -d..(d + 1) {
                 for y in -d..(d + 1) {
                     for z in -d..(d + 1) {
@@ -202,8 +202,8 @@ impl GameImpl {
             if chunk.is_modified() {return true;}
             for (_, player) in connections.iter() {
                 let player = &players[*player];
-                let p = player.get_pos();
-                if p.chunk_pos().orthogonal_dist(*pos) <= player.render_distance {
+                let p : ChunkPos = player.get_pos().high();
+                if p.orthogonal_dist(*pos) <= player.render_distance {
                     return true;
                 }
             }

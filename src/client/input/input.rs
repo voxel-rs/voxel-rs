@@ -1,4 +1,5 @@
 use crate::sim::player::{PlayerKey, PlayerControls};
+use crate::sim::chunk::SubIndex;
 use super::*;
 use super::chunk::ChunkState;
 use glutin::dpi::LogicalPosition;
@@ -47,7 +48,7 @@ impl InputImpl {
                     WindowEvent::MouseInput { button, state, .. } => {
                         if button == MouseButton::Right && state == ElementState::Pressed {
                             println!("Player position: {:?}", self.input_state.camera.get_pos());
-                            let player_chunk = self.input_state.camera.get_pos().chunk_pos();
+                            let player_chunk : ChunkPos = self.input_state.camera.get_pos().high();
                             let c = self.game_state.chunks.get(&player_chunk).unwrap().borrow();
                             println!("Player chunk: {:?} (fragment_count: {}, adj_chunks: {}, state: {:?})", player_chunk, c.fragments, c.adj_chunks, c.state);
                         } else {
@@ -89,7 +90,7 @@ impl InputImpl {
                     }
                 }
                 ToInput::SetPos(pos) => {
-                    self.input_state.camera.set_pos(pos.into());
+                    self.input_state.camera.set_pos(pos.0);
                 }
                 message @ ToInput::NewChunkFragment(..) | message @ ToInput::NewChunkInfo(..) => {
                     self.pending_messages.push_back(message);
