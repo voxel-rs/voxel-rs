@@ -119,6 +119,11 @@ impl Player {
         if self.keys.contains(PlayerKey::PhysicsEnable) {
             println!("Physics on!");
             self.physics = true;
+            if let Some(body) = self.body {
+                physics.world.rigid_body_mut(body)
+                    .expect("Cannot load body")
+                    .set_position(Isometry::new(self.pos, Vector3::zeros()))
+            }
         }
 
         if self.body.is_none() {
@@ -129,7 +134,11 @@ impl Player {
         if !self.physics {
             self.vel = [0.0, 0.0, 0.0].into();
         } else {
-            self.vel /= 2.0; //TODO: fix
+            self.vel.x /= 2.0;
+            self.vel.z /= 2.0;
+            if self.vel.y > 0.0 {
+                self.vel.y /= 2.0
+            }
         }
         //TODO: maximum speed
         if self.keys.contains(PlayerKey::Forward) {
@@ -160,11 +169,6 @@ impl Player {
         // TODO: integrate physics
         if !self.physics {
             self.pos += self.vel * dt;
-            if let Some(body) = self.body {
-                physics.world.rigid_body_mut(body)
-                    .expect("Cannot load body")
-                    .set_position(Isometry::new(self.pos, Vector3::zeros()))
-            }
         } else if let Some(body) = self.body {
             physics.world.rigid_body_mut(body)
                 .expect("Cannot load body")
@@ -176,8 +180,10 @@ impl Player {
     pub fn finalize(&mut self, _config : &Config, world: &mut ChunkMap, physics : &mut PhysicsState) {
         if let Some(body) = self.body {
             let rigid_body = physics.world.rigid_body(body).expect("Cannot load body");
-            self.pos = rigid_body.position().translation.vector;
-            if self.physics {self.vel = rigid_body.velocity().linear;}
+            if self.physics {
+                self.pos = rigid_body.position().translation.vector;
+                self.vel = rigid_body.velocity().linear;
+            }
         }
 
         let chunk_pos : ChunkPos = self.get_pos().high();

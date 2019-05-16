@@ -25,7 +25,9 @@ impl PhysicsState {
 
     /// Create a new physics state, with no active bodies
     pub fn new() -> PhysicsState {
-        PhysicsState{ world : PhysicsWorld::new(), active : HashSet::new() }
+        let mut world = PhysicsWorld::new();
+        world.set_gravity([0.0, -10.0, 0.0].into());
+        PhysicsState{ world : world, active : HashSet::new() }
     }
 
     /// Spawn colliders, given a spawner, for a body within an AABB (if they don't already exist)
