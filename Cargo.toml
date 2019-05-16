@@ -33,6 +33,13 @@ features = ["serde"]
 version = "^0.18"
 features = ["serde-serialize"]
 
+[dependencies.ncollide3d]
+version = "^0.19"
+features = ["serde"]
+
+[dependencies.nphysics3d]
+version = "^0.11"
+
 [dependencies.hashbrown]
 version = "^0.3.0"
 features = ["serde"]
