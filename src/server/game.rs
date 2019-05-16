@@ -211,13 +211,18 @@ impl GameImpl {
         let GameImpl {
             ref mut world,
             ref mut connections,
+            ref mut config,
             ..
         } = *self;
 
+        //TODO: configure how often this happens
+        world.physics_gc(&config);
+
+        //TODO: put this into the chunk_gc method, configure how often this happens
         let World {
             ref mut chunks,
             ref mut players,
-            ..  
+            ..
         } = *world;
 
         // Remove chunks that are far from all players

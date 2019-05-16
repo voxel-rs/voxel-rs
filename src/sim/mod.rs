@@ -41,7 +41,6 @@ impl World {
         //TODO: this
 
         // Stage 2: Mobs and players make their moves, edit the world.
-        //TODO: information is synced between mobs and players and the physics world
         for p in self.players.iter_mut() {
             p.tick(dt, config, &mut self.chunks, &mut self.physics);
         }
@@ -56,8 +55,19 @@ impl World {
         // (including the bodies of mobs and players)
         self.physics.tick(dt);
 
-        // Stage 6 (OPTIONAL): physics objects are garbage collected
+        // Stage 6: Information is synced between mobs and the physics world
+        for p in self.players.iter_mut() {
+            p.sync_physics(config, &mut self.physics);
+        }
 
+    }
+
+    pub fn physics_gc(&mut self, _config : &Config) {
+        //TODO: this
+    }
+
+    pub fn chunk_gc(&mut self, _config : &Config) {
+        //TODO: this
     }
 
 }

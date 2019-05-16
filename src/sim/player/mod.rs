@@ -154,6 +154,10 @@ impl Player {
         }
     }
 
+    pub fn sync_physics(&mut self, _config : &Config, _physics : &mut PhysicsState) {
+        //TODO: implement
+    }
+
     #[inline]
     fn mv_direction(&self, angle: f64) -> Vector3<f64> {
         let yaw = self.yaw + angle;
