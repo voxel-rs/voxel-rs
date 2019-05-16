@@ -15,6 +15,8 @@ lazy_static! {
         ShapeHandle::new(Cuboid::new([32.0, 32.0, 32.0].into()));
     pub static ref PLAYER_SHAPE : ShapeHandle<f64> =
         ShapeHandle::new(Cuboid::new([1.0, 2.0, 1.0].into()));
+    pub static ref BLOCK_SHAPE : ShapeHandle<f64> =
+        ShapeHandle::new(Cuboid::new([1.0, 1.0, 1.0].into()));
 }
 
 /// The state of physics in the simulation
