@@ -62,7 +62,7 @@ impl SubIndex<ChunkPos> for WorldPos {
         }
         ret
     }
-    
+
     fn low(&self) -> InnerChunkPos {
         let bp : BlockPos = self.high();
         bp.low()
@@ -152,6 +152,10 @@ impl ChunkPos {
             maxcoord = i64::max(maxcoord, (other[i] - self[i]).abs());
         }
         maxcoord as u64
+    }
+    pub fn center(self) -> Vector3<f64> {
+        Vector3::from([self.x as f64 * 32.0, self.y as f64 * 32.0, self.z as f64 * 32.0])
+        + Vector3::from([16.0, 16.0, 16.0])
     }
     /*
     pub fn get_adjacent(self) -> [ChunkPos; 6] {
