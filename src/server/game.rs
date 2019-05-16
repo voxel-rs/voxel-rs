@@ -37,6 +37,7 @@ struct GameImpl {
     player_chunks : HashMap<PlayerId, HashMap<ChunkPos, u64>>,
     last_tick: Instant,
     last_update: Ticker,
+    ticks : u64
 }
 
 impl GameImpl {
@@ -56,6 +57,7 @@ impl GameImpl {
             player_chunks: HashMap::default(),
             last_tick: Instant::now(),
             last_update: Ticker::from_tick_rate(60),
+            ticks : 0
         }
     }
 
@@ -104,18 +106,14 @@ impl GameImpl {
         }
     }
 
-    //TODO: change to world ticking
     pub fn tick_game(&mut self) {
         let now = Instant::now();
         let dt = now - self.last_tick;
         self.last_tick = now;
+        self.ticks += 1;
         let dt = dt.subsec_nanos() as f64 / 1_000_000_000.0;
 
-        for p in self.world.players.iter_mut() {
-            p.tick(dt, &self.config, &mut self.world.chunks);
-        }
-
-        self.world.physics.tick(dt);
+        self.world.tick(dt, &self.config);
     }
 
     pub fn send_chunks(&mut self) {

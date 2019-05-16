@@ -1,3 +1,5 @@
+use crate::config::Config;
+
 pub mod worldgen;
 pub mod player;
 pub mod chunk;
@@ -20,5 +22,12 @@ impl World {
         players : PlayerSet::new(),
         physics : PhysicsState::new()
     }}
+
+    pub fn tick(&mut self, dt : f64, config : &Config) {
+        for p in self.players.iter_mut() {
+            p.tick(dt, config, &mut self.chunks);
+        }
+        self.physics.tick(dt);
+    }
 
 }

@@ -143,7 +143,7 @@ impl Player {
         }
 
         // TODO: integrate physics
-        self.pos += self.vel * dt;
+        if !self.physics {self.pos += self.vel * dt;}
 
         let chunk_pos : ChunkPos = self.get_pos().high();
         // Can't move to an unloaded chunk
@@ -154,6 +154,7 @@ impl Player {
         }
     }
 
+    #[inline]
     fn mv_direction(&self, angle: f64) -> Vector3<f64> {
         let yaw = self.yaw + angle;
         Vector3::new(-yaw.to_radians().sin(), 0.0, -yaw.to_radians().cos()).normalize()
