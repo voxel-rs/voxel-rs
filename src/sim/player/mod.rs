@@ -8,7 +8,7 @@ use nalgebra::Vector3;
 use serde_derive::{Deserialize, Serialize};
 use enumset::{EnumSet, EnumSetType};
 
-use nphysics3d::object::{BodyHandle, RigidBody};
+use nphysics3d::object::BodyHandle;
 
 mod player_set;
 pub use player_set::PlayerSet;
