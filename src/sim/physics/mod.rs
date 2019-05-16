@@ -10,7 +10,7 @@ use ncollide3d::bounding_volume::{AABB, BoundingSphere};
 /// The state of physics in the simulation
 pub struct PhysicsState {
     /// The physics world
-    world : PhysicsWorld,
+    pub world : PhysicsWorld,
     /// A list of active colliders for spawners.
     /// "Garbage collected" by checking if colliders from other bodies are nearby.
     /// TODO: think of a way to garbage collect colliders for nearby bodies known not to collide

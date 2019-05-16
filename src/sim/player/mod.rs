@@ -118,24 +118,29 @@ impl Player {
         }
 
         let old_pos = self.pos.clone();
-        self.vel = [0.0, 0.0, 0.0].into();
+        if !self.physics {
+            self.vel = [0.0, 0.0, 0.0].into();
+        }
+        //TODO: maximum speed
         if self.keys.contains(PlayerKey::Forward) {
-            self.vel = speedup * self.mv_direction(0.0) * (config.player_speed);
+            self.vel += speedup * self.mv_direction(0.0) * (config.player_speed);
         }
         if self.keys.contains(PlayerKey::Left) {
-            self.vel = speedup * self.mv_direction(90.0) * (config.player_speed);
+            self.vel += speedup * self.mv_direction(90.0) * (config.player_speed);
         }
         if self.keys.contains(PlayerKey::Backward) {
-            self.vel = speedup * self.mv_direction(180.0) * (config.player_speed);
+            self.vel += speedup * self.mv_direction(180.0) * (config.player_speed);
         }
         if self.keys.contains(PlayerKey::Right) {
-            self.vel = speedup * self.mv_direction(270.0) * (config.player_speed);
+            self.vel += speedup * self.mv_direction(270.0) * (config.player_speed);
         }
-        if self.keys.contains(PlayerKey::Up) {
-            self.vel.y += speedup * config.player_speed;
-        }
-        if self.keys.contains(PlayerKey::Down) {
-            self.vel.y -= speedup * config.player_speed;
+        if !self.physics {
+            if self.keys.contains(PlayerKey::Up) {
+                self.vel.y += speedup * config.player_speed;
+            }
+            if self.keys.contains(PlayerKey::Down) {
+                self.vel.y -= speedup * config.player_speed;
+            }
         }
 
         if self.keys.contains(PlayerKey::Hit) {
@@ -154,8 +159,13 @@ impl Player {
         }
     }
 
-    pub fn sync_physics(&mut self, _config : &Config, _physics : &mut PhysicsState) {
-        //TODO: implement
+    pub fn sync_physics(&mut self, _config : &Config, physics : &mut PhysicsState) {
+        if !self.physics {return;}
+        if let Some(body) = self.body {
+            let rigid_body = physics.world.rigid_body(body).expect("Cannot load body");
+            self.pos = rigid_body.position().translation.vector;
+            self.vel = rigid_body.velocity().linear;
+        }
     }
 
     #[inline]
