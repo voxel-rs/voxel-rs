@@ -1,5 +1,58 @@
 use super::*;
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
+pub enum ChunkData {
+    Full(Box<ChunkArray>),
+    Empty
+}
+
+impl ChunkData {
+    pub fn empty_full() -> ChunkData {
+        ChunkData::Full(Box::new([[[BlockId::from(0); CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE]))
+    }
+    pub fn is_empty_variant(&self) -> bool {
+        match self {
+            ChunkData::Full(_) => false,
+            ChunkData::Empty => true
+        }
+    }
+    pub fn is_empty(&self) -> bool {
+        match self {
+            ChunkData::Full(f) => {
+                for slice in f.iter() {
+                    for line in slice {
+                        for block in line {
+                            if *block != BlockId::from(0) {
+                                return false;
+                            }
+                        }
+                    }
+                }
+                return true;
+            },
+            ChunkData::Empty => true
+        }
+    }
+    pub fn fill(&mut self) -> &mut Box<ChunkArray> {
+        if self.is_empty() {
+            *self = Self::empty_full();
+        }
+        if let ChunkData::Full(ref mut f) = self {
+            return f;
+        }
+        unreachable!();
+    }
+    pub fn compress(&mut self) -> bool {
+        if self.is_empty() {
+            *self = ChunkData::Empty;
+            true
+        } else {
+            false
+        }
+    }
+}
+
 /// A server-side chunk
 #[derive(Clone)]
 pub struct Chunk {
@@ -13,7 +66,7 @@ impl Chunk {
     /// Iterate over the blocks in this chunk
     #[allow(dead_code)]
     pub fn iter(&self) -> impl Iterator<Item = &[ChunkFragment; CHUNK_SIZE]> {
-        self.blocks.iter()
+        self.blocks.fill().iter() //TODO
     }
     /// What version is this chunk (version 0 is freshly generated)
     pub fn get_version(&self) -> u64 {
