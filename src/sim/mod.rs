@@ -43,7 +43,7 @@ impl World {
         // Stage 2: Mobs and players make their moves, edit the world.
         //TODO: information is synced between mobs and players and the physics world
         for p in self.players.iter_mut() {
-            p.tick(dt, config, &mut self.chunks);
+            p.tick(dt, config, &mut self.chunks, &mut self.physics);
         }
 
         // Stage 3: Mobs and players act on each other

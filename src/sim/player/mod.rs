@@ -1,7 +1,7 @@
 //! `Player`-related data structures.
-
 use glutin::ElementState;
 use super::chunk::{map::ChunkMap, ChunkPos, InnerChunkPos, ChunkState, WorldPos, SubIndex};
+use super::physics::PhysicsState;
 use crate::block::BlockId;
 use crate::config::Config;
 use nalgebra::Vector3;
@@ -102,7 +102,7 @@ impl Player {
         world.set(h, l, BlockId::from(0))
     }
 
-    pub fn tick(&mut self, dt: f64, config: &Config, world: &mut ChunkMap) {
+    pub fn tick(&mut self, dt: f64, config: &Config, world: &mut ChunkMap, physics : &mut PhysicsState) {
 
         // Don't tick inactive players
         if !self.active {return;}
