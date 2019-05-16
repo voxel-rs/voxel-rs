@@ -114,6 +114,8 @@ impl GameImpl {
         for p in self.world.players.iter_mut() {
             p.tick(dt, &self.config, &mut self.world.chunks);
         }
+
+        self.world.physics.tick(dt);
     }
 
     pub fn send_chunks(&mut self) {

@@ -8,6 +8,8 @@ use nalgebra::Vector3;
 use serde_derive::{Deserialize, Serialize};
 use enumset::{EnumSet, EnumSetType};
 
+use nphysics3d::object::{BodyHandle, RigidBody};
+
 mod player_set;
 pub use player_set::PlayerSet;
 pub use player_set::PlayerId;
@@ -55,7 +57,10 @@ pub struct PlayerInput {
 
 /// A server-side player
 pub struct Player {
+    /// This player's position
     pub pos: Vector3<f64>,
+    /// This player's *desired* velocity
+    pub vel : Vector3<f64>,
     /// Yaw in degrees
     pub yaw: f64,
     /// Pitch in degrees
@@ -69,7 +74,9 @@ pub struct Player {
     /// Whether this player is active
     pub active : bool,
     /// Whether this player has physics enabled
-    pub physics : bool
+    pub physics : bool,
+    /// This player's associated body in the physics world
+    pub body : Option<BodyHandle>
 }
 
 impl Player {
@@ -77,13 +84,15 @@ impl Player {
     pub fn new(id : PlayerId, pos : Vector3<f64>, active : bool) -> Player {
         Player {
             pos: pos,
+            vel : [0.0, 0.0, 0.0].into(),
             yaw: 0.0,
             pitch: 0.0,
             render_distance: 0,
             keys: PlayerControls::new(),
             id : id,
             active : active,
-            physics : false
+            physics : false,
+            body : None
         }
     }
 
@@ -109,28 +118,32 @@ impl Player {
         }
 
         let old_pos = self.pos.clone();
+        self.vel = [0.0, 0.0, 0.0].into();
         if self.keys.contains(PlayerKey::Forward) {
-            self.pos += speedup * self.mv_direction(0.0) * (config.player_speed * dt);
+            self.vel = speedup * self.mv_direction(0.0) * (config.player_speed);
         }
         if self.keys.contains(PlayerKey::Left) {
-            self.pos += speedup * self.mv_direction(90.0) * (config.player_speed * dt);
+            self.vel = speedup * self.mv_direction(90.0) * (config.player_speed);
         }
         if self.keys.contains(PlayerKey::Backward) {
-            self.pos += speedup * self.mv_direction(180.0) * (config.player_speed * dt);
+            self.vel = speedup * self.mv_direction(180.0) * (config.player_speed);
         }
         if self.keys.contains(PlayerKey::Right) {
-            self.pos += speedup * self.mv_direction(270.0) * (config.player_speed * dt);
+            self.vel = speedup * self.mv_direction(270.0) * (config.player_speed);
         }
         if self.keys.contains(PlayerKey::Up) {
-            self.pos.y += speedup * config.player_speed * dt;
+            self.vel.y += speedup * config.player_speed;
         }
         if self.keys.contains(PlayerKey::Down) {
-            self.pos.y -= speedup * config.player_speed * dt;
+            self.vel.y -= speedup * config.player_speed;
         }
 
         if self.keys.contains(PlayerKey::Hit) {
             self.handle_hit(dt, config, world);
         }
+
+        // TODO: integrate physics
+        self.pos += self.vel * dt;
 
         let chunk_pos : ChunkPos = self.get_pos().high();
         // Can't move to an unloaded chunk

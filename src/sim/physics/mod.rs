@@ -47,6 +47,11 @@ impl PhysicsState {
         spawner.spawn_sphere(sphere, world, body, |handle| {active.insert(handle);});
     }
 
+    pub fn tick(&mut self, dt : f64) {
+        self.world.set_timestep(dt);
+        self.world.step();
+    }
+
 }
 
 /// An object which contains physics objects to be spawned when an active physics object gets within
