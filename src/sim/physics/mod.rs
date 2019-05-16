@@ -4,9 +4,11 @@ use crate::sim::player::Player;
 use hashbrown::hash_set::HashSet;
 
 pub type PhysicsWorld = nphysics3d::world::World<f64>;
-use nphysics3d::object::ColliderHandle;
-use nphysics3d::object::BodyHandle;
+use nphysics3d::object::{ColliderHandle, BodyHandle, RigidBodyDesc, ColliderDesc};
+use nphysics3d::math::Velocity;
+use ncollide3d::shape::{ShapeHandle, Cuboid};
 use ncollide3d::bounding_volume::{AABB, BoundingSphere};
+use nalgebra::Vector3;
 
 /// The state of physics in the simulation
 pub struct PhysicsState {
@@ -57,8 +59,16 @@ impl PhysicsState {
         if let Some(body) = player.body {
             return body;
         }
-        //TODO:
-        BodyHandle::ground()
+        // 1 block at the base, 2 blocks high
+        let shape = ShapeHandle::new(Cuboid::new([1.0, 2.0, 1.0].into()));
+        let collider = ColliderDesc::new(shape);
+        RigidBodyDesc::new()
+            .translation(player.pos)
+            .mass(1.0) //TODO: this
+            .velocity(Velocity::new(player.vel, Vector3::zeros()))
+            .collider(&collider)
+            .build(&mut self.world)
+            .handle()
     }
 
 }

@@ -59,6 +59,8 @@ pub struct PlayerInput {
 pub struct Player {
     /// This player's position
     pub pos: Vector3<f64>,
+    // This player's position last tick
+    pub old_pos : Vector3<f64>,
     /// This player's *desired* velocity
     pub vel : Vector3<f64>,
     /// Yaw in degrees
@@ -84,6 +86,7 @@ impl Player {
     pub fn new(id : PlayerId, pos : Vector3<f64>, active : bool) -> Player {
         Player {
             pos: pos,
+            old_pos : pos,
             vel : [0.0, 0.0, 0.0].into(),
             yaw: 0.0,
             pitch: 0.0,
@@ -152,23 +155,31 @@ impl Player {
         }
 
         // TODO: integrate physics
-        if !self.physics {self.pos += self.vel * dt;}
+        if self.physics {
+            //TODO
+        } else {
+            self.pos += self.vel * dt;
+        }
+
+    }
+
+    pub fn finalize(&mut self, _config : &Config, world: &mut ChunkMap, physics : &mut PhysicsState) {
+        if self.physics {
+            if let Some(body) = self.body {
+                let rigid_body = physics.world.rigid_body(body).expect("Cannot load body");
+                self.pos = rigid_body.position().translation.vector;
+                self.vel = rigid_body.velocity().linear;
+            }
+        }
 
         let chunk_pos : ChunkPos = self.get_pos().high();
         // Can't move to an unloaded chunk
         if !world.contains_key(&chunk_pos) {
-            self.pos = old_pos;
+            self.pos = self.old_pos;
         } else if let &ChunkState::Generating = world.get(&chunk_pos).unwrap() {
-            self.pos = old_pos;
-        }
-    }
-
-    pub fn sync_physics(&mut self, _config : &Config, physics : &mut PhysicsState) {
-        if !self.physics {return;}
-        if let Some(body) = self.body {
-            let rigid_body = physics.world.rigid_body(body).expect("Cannot load body");
-            self.pos = rigid_body.position().translation.vector;
-            self.vel = rigid_body.velocity().linear;
+            self.pos = self.old_pos;
+        } else {
+            self.old_pos = self.pos;
         }
     }
 

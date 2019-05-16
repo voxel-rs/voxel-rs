@@ -55,9 +55,9 @@ impl World {
         // (including the bodies of mobs and players)
         self.physics.tick(dt);
 
-        // Stage 6: Information is synced between mobs and the physics world
+        // Stage 6: Information is synced between mobs and the physics world before the end of the tick
         for p in self.players.iter_mut() {
-            p.sync_physics(config, &mut self.physics);
+            p.finalize(config, &mut self.chunks, &mut self.physics);
         }
 
     }
