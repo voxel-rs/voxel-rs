@@ -1,5 +1,7 @@
 #[macro_use]
 extern crate gfx;
+#[macro_use]
+extern crate lazy_static;
 extern crate num;
 
 // MUST BE A MULTIPLE OF 8 !

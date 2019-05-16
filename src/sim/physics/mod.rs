@@ -10,6 +10,13 @@ use ncollide3d::shape::{ShapeHandle, Cuboid};
 use ncollide3d::bounding_volume::{AABB, BoundingSphere};
 use nalgebra::Vector3;
 
+lazy_static! {
+    pub static ref CHUNK_SHAPE : ShapeHandle<f64> =
+        ShapeHandle::new(Cuboid::new([32.0, 32.0, 32.0].into()));
+    pub static ref PLAYER_SHAPE : ShapeHandle<f64> =
+        ShapeHandle::new(Cuboid::new([1.0, 2.0, 1.0].into()));
+}
+
 /// The state of physics in the simulation
 pub struct PhysicsState {
     /// The physics world
@@ -67,8 +74,7 @@ impl PhysicsState {
             return body;
         }
         // 1 block at the base, 2 blocks high
-        let shape = ShapeHandle::new(Cuboid::new([1.0, 2.0, 1.0].into()));
-        let collider = ColliderDesc::new(shape);
+        let collider = ColliderDesc::new(PLAYER_SHAPE.clone());
         RigidBodyDesc::new()
             .translation(player.pos)
             .mass(1.0) //TODO: this
