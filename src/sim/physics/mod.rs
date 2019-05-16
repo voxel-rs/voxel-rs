@@ -27,6 +27,11 @@ impl PhysicsState {
     pub fn new() -> PhysicsState {
         let mut world = PhysicsWorld::new();
         world.set_gravity([0.0, -10.0, 0.0].into());
+
+        let bx = Cuboid::new([10.0, 10.0, 10.0].into());
+        ColliderDesc::new(ShapeHandle::new(bx))
+            .build(&mut world);
+
         PhysicsState{ world : world, active : HashSet::new() }
     }
 
