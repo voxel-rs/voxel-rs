@@ -128,7 +128,8 @@ impl GameImpl {
 
         let World {
             ref mut chunks,
-            ref mut players
+            ref mut players,
+            ..
         } = *world;
 
         // Send chunks to the players, eventually generating them
