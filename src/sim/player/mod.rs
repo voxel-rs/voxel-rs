@@ -9,7 +9,7 @@ use serde_derive::{Deserialize, Serialize};
 use enumset::{EnumSet, EnumSetType};
 
 use nphysics3d::object::BodyHandle;
-use nphysics3d::math::Velocity;
+use nphysics3d::math::{Velocity, Isometry};
 
 mod player_set;
 pub use player_set::PlayerSet;
@@ -160,6 +160,11 @@ impl Player {
         // TODO: integrate physics
         if !self.physics {
             self.pos += self.vel * dt;
+            if let Some(body) = self.body {
+                physics.world.rigid_body_mut(body)
+                    .expect("Cannot load body")
+                    .set_position(Isometry::new(self.pos, Vector3::zeros()))
+            }
         } else if let Some(body) = self.body {
             physics.world.rigid_body_mut(body)
                 .expect("Cannot load body")
