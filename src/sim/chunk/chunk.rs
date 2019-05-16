@@ -94,6 +94,19 @@ impl Chunk {
         self.blocks[x][y][z] = block;
         self.version += 1;
     }
+    /// Check whether this chunk is empty
+    pub fn is_empty(&self) -> bool {
+        for slice in self.blocks.iter() {
+            for line in slice {
+                for block in line {
+                    if *block != BlockId::from(0) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
 }
 
 impl From<ChunkContents> for Chunk {
