@@ -36,8 +36,7 @@ struct GameImpl {
     connections: HashMap<ConnectionId, PlayerId>,
     player_chunks : HashMap<PlayerId, HashMap<ChunkPos, u64>>,
     last_tick: Instant,
-    last_update: Ticker,
-    ticks : u64
+    last_update: Ticker
 }
 
 impl GameImpl {
@@ -56,8 +55,7 @@ impl GameImpl {
             connections: HashMap::default(),
             player_chunks: HashMap::default(),
             last_tick: Instant::now(),
-            last_update: Ticker::from_tick_rate(60),
-            ticks : 0
+            last_update: Ticker::from_tick_rate(60)
         }
     }
 
@@ -110,7 +108,6 @@ impl GameImpl {
         let now = Instant::now();
         let dt = now - self.last_tick;
         self.last_tick = now;
-        self.ticks += 1;
         let dt = dt.subsec_nanos() as f64 / 1_000_000_000.0;
 
         self.world.tick(dt, &self.config);
