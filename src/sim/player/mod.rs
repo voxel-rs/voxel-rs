@@ -9,6 +9,7 @@ use serde_derive::{Deserialize, Serialize};
 use enumset::{EnumSet, EnumSetType};
 
 use nphysics3d::object::BodyHandle;
+use nphysics3d::math::Velocity;
 
 mod player_set;
 pub use player_set::PlayerSet;
@@ -120,13 +121,15 @@ impl Player {
             self.physics = true;
         }
 
-        if self.physics && self.body.is_none() {
-            physics.register_player(self);
+        if self.body.is_none() {
+            self.body = Some(physics.register_player(self));
+            println!("Set body!");
         }
 
-        let old_pos = self.pos.clone();
         if !self.physics {
             self.vel = [0.0, 0.0, 0.0].into();
+        } else {
+            self.vel /= 2.0; //TODO: fix
         }
         //TODO: maximum speed
         if self.keys.contains(PlayerKey::Forward) {
@@ -141,35 +144,35 @@ impl Player {
         if self.keys.contains(PlayerKey::Right) {
             self.vel += speedup * self.mv_direction(270.0) * (config.player_speed);
         }
-        if !self.physics {
+        //if !self.physics {
             if self.keys.contains(PlayerKey::Up) {
                 self.vel.y += speedup * config.player_speed;
             }
             if self.keys.contains(PlayerKey::Down) {
                 self.vel.y -= speedup * config.player_speed;
             }
-        }
+        //}
 
         if self.keys.contains(PlayerKey::Hit) {
             self.handle_hit(dt, config, world);
         }
 
         // TODO: integrate physics
-        if self.physics {
-            //TODO
-        } else {
+        if !self.physics {
             self.pos += self.vel * dt;
+        } else if let Some(body) = self.body {
+            physics.world.rigid_body_mut(body)
+                .expect("Cannot load body")
+                .set_velocity(Velocity::new(self.vel, Vector3::zeros()));
         }
 
     }
 
     pub fn finalize(&mut self, _config : &Config, world: &mut ChunkMap, physics : &mut PhysicsState) {
-        if self.physics {
-            if let Some(body) = self.body {
-                let rigid_body = physics.world.rigid_body(body).expect("Cannot load body");
-                self.pos = rigid_body.position().translation.vector;
-                self.vel = rigid_body.velocity().linear;
-            }
+        if let Some(body) = self.body {
+            let rigid_body = physics.world.rigid_body(body).expect("Cannot load body");
+            self.pos = rigid_body.position().translation.vector;
+            if self.physics {self.vel = rigid_body.velocity().linear;}
         }
 
         let chunk_pos : ChunkPos = self.get_pos().high();
