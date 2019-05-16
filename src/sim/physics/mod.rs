@@ -1,4 +1,5 @@
 use crate::sim::chunk::Chunk;
+use crate::sim::player::Player;
 
 use hashbrown::hash_set::HashSet;
 
@@ -50,6 +51,14 @@ impl PhysicsState {
     pub fn tick(&mut self, dt : f64) {
         self.world.set_timestep(dt);
         self.world.step();
+    }
+
+    pub fn register_player(&mut self, player : &Player) -> BodyHandle {
+        if let Some(body) = player.body {
+            return body;
+        }
+        //TODO:
+        BodyHandle::ground()
     }
 
 }

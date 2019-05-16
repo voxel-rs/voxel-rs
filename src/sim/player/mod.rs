@@ -117,6 +117,10 @@ impl Player {
             self.physics = true;
         }
 
+        if self.physics && self.body.is_none() {
+            physics.register_player(self);
+        }
+
         let old_pos = self.pos.clone();
         if !self.physics {
             self.vel = [0.0, 0.0, 0.0].into();
