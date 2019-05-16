@@ -7,6 +7,7 @@ pub enum ChunkData {
     Empty
 }
 
+#[allow(dead_code)]
 impl ChunkData {
     pub fn empty_full() -> ChunkData {
         ChunkData::Full(Box::new([[[BlockId::from(0); CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE]))
@@ -66,7 +67,7 @@ impl Chunk {
     /// Iterate over the blocks in this chunk
     #[allow(dead_code)]
     pub fn iter(&self) -> impl Iterator<Item = &[ChunkFragment; CHUNK_SIZE]> {
-        self.blocks.fill().iter() //TODO
+        self.blocks.iter() //TODO
     }
     /// What version is this chunk (version 0 is freshly generated)
     pub fn get_version(&self) -> u64 {
