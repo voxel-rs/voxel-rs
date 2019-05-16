@@ -24,6 +24,8 @@ pub fn start(
         implementation.tick_game();
 
         implementation.send_chunks();
+
+        implementation.garbage_collect();
     }
 }
 
@@ -194,6 +196,30 @@ impl GameImpl {
             player_chunks.get_mut(player).unwrap().retain(|pos, _| pos.orthogonal_dist(pc) <= render_distance);
         }
 
+        // Send physics updates
+        if last_update.try_tick() {
+            for (id, player) in connections {
+                let player = &players[*player];
+                network_tx
+                    .send(ToNetwork::SetPos(*id, player.get_pos().clone()))
+                    .unwrap();
+            }
+        }
+    }
+
+    pub fn garbage_collect(&mut self) {
+        let GameImpl {
+            ref mut world,
+            ref mut connections,
+            ..
+        } = *self;
+
+        let World {
+            ref mut chunks,
+            ref mut players,
+            ..  
+        } = *world;
+
         // Remove chunks that are far from all players
 
         chunks.retain(|pos, chunk| {
@@ -208,15 +234,5 @@ impl GameImpl {
             false
         });
 
-
-        // Send physics updates
-        if last_update.try_tick() {
-            for (id, player) in connections {
-                let player = &players[*player];
-                network_tx
-                    .send(ToNetwork::SetPos(*id, player.get_pos().clone()))
-                    .unwrap();
-            }
-        }
     }
 }
