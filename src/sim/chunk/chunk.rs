@@ -27,6 +27,14 @@ impl ChunkSimArray {
     pub fn iter(&self) -> impl Iterator<Item=&SimFaces>  {
         InnerIdx::indices().map(move |i| &self[i])
     }
+    #[allow(dead_code)]
+    pub fn slices(&self) -> impl Iterator<Item=&[[SimFaces; CHUNK_SIZE]; CHUNK_SIZE]> {
+        self.0.iter()
+    }
+    #[allow(dead_code)]
+    pub fn slices_mut(&mut self) -> impl Iterator<Item=&mut [[SimFaces; CHUNK_SIZE]; CHUNK_SIZE]> {
+        self.0.iter_mut()
+    }
 }
 
 impl<T: InnerPos> Index<T> for ChunkSimArray {
@@ -110,8 +118,12 @@ pub struct Chunk {
 impl Chunk {
     /// Iterate over the blocks in this chunk
     #[allow(dead_code)]
-    pub fn iter(&self) -> impl Iterator<Item = &[ChunkFragment; CHUNK_SIZE]> {
+    pub fn slices(&self) -> impl Iterator<Item = &[ChunkFragment; CHUNK_SIZE]> {
         self.blocks.iter() //TODO
+    }
+    #[allow(dead_code)]
+    pub fn slices_mut(&mut self) -> impl Iterator<Item=&mut [ChunkFragment; CHUNK_SIZE]> {
+        self.blocks.iter_mut()
     }
     /// What version is this chunk (version 0 is freshly generated)
     pub fn get_version(&self) -> u64 {
