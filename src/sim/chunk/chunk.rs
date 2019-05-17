@@ -1,4 +1,4 @@
-use crate::util::{Face, Faces};
+use crate::util::Face;
 
 use serde::{Serialize, Deserialize};
 use enumset::{EnumSet, EnumSetType};
