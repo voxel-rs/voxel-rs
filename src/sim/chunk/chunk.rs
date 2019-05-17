@@ -1,4 +1,4 @@
-use crate::util::Face;
+use crate::util::Faces;
 
 use serde::{Serialize, Deserialize};
 use enumset::{EnumSet, EnumSetType};
@@ -187,8 +187,20 @@ impl Chunk {
         // Update physics state:
         if block == BlockId::from(0) {
             // Now all neighboring blocks are visible from the appropriate side
+            for face in Faces::all() {
+                if let Some(adj) = pos.adjacent(face) {
+                    let simface : SimFace = face.into();
+                    self.sides[adj] &= !simface;
+                }
+            }
         } else {
             // Now all neighboring blocks are invisible from the appropriate side
+            for face in Faces::all() {
+                if let Some(adj) = pos.adjacent(face) {
+                    let simface : SimFace = face.into();
+                    self.sides[adj] |= simface;
+                }
+            }
         }
         self.blocks[pos.x()][pos.y()][pos.z()] = block;
         self.version += 1;

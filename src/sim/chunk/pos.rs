@@ -1,4 +1,5 @@
 use crate::CHUNK_SIZE;
+use crate::util::Face;
 
 use std::ops::IndexMut;
 use std::ops::Index;
@@ -206,6 +207,8 @@ impl IndexMut<usize> for ChunkPos {
 }
 
 pub trait InnerPos {
+    type AdjacentPos : InnerPos;
+
     fn x(&self) -> usize;
     fn y(&self) -> usize;
     fn z(&self) -> usize;
@@ -215,28 +218,11 @@ pub trait InnerPos {
     fn idx(&self) -> InnerIdx {
         InnerIdx(self.x() + self.y() * CHUNK_SIZE + self.z() * CHUNK_SIZE * CHUNK_SIZE)
     }
-    #[inline]
-    fn transform(&self, delta : &[i64; 3]) -> Option<InnerCoords> {
-        let xi = self.x() as i64 + delta[0];
-        if xi < 0 || xi > CHUNK_SIZE as i64 {
-            return None;
-        }
-        let yi = self.y() as i64 + delta[1];
-        if yi < 0 || yi > CHUNK_SIZE as i64 {
-            return None;
-        }
-        let zi = self.z() as i64 + delta[2];
-        if zi < 0 || zi > CHUNK_SIZE as i64 {
-            return None;
-        }
-        Some((xi as u8, yi as u8, zi as u8).into())
-    }
+    fn adjacent(&self, face : Face) -> Option<Self::AdjacentPos>;
 }
 
 #[derive(
-    Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize, From,
-    Add, Sub, Mul, Rem, Div, Shr, Shl,
-    AddAssign, SubAssign, MulAssign, DivAssign, RemAssign, ShrAssign, ShlAssign
+    Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize, From
 )]
 pub struct InnerCoords{
     xc : u8, yc : u8, zc : u8
@@ -280,15 +266,30 @@ impl IndexMut<usize> for InnerCoords {
 }
 
 impl InnerPos for InnerCoords {
+    type AdjacentPos = Self;
     fn x(&self) -> usize {self.xc as usize}
     fn y(&self) -> usize {self.yc as usize}
     fn z(&self) -> usize {self.zc as usize}
+    fn adjacent(&self, face : Face) -> Option<Self::AdjacentPos> {
+        match face {
+            Face::Back => if self.zc == 0 {None} else {
+                InnerCoords::new(self.xc, self.yc, self.zc - 1)
+            },
+            Face::Front => InnerCoords::new(self.xc, self.yc, self.zc + 1),
+            Face::Right => InnerCoords::new(self.xc + 1, self.yc, self.zc),
+            Face::Left => if self.xc == 0 {None} else {
+                InnerCoords::new(self.xc - 1, self.yc, self.zc)
+            },
+            Face::Top => InnerCoords::new(self.xc, self.yc + 1, self.zc),
+            Face::Bottom => if self.yc == 0 {None} else {
+                InnerCoords::new(self.xc, self.yc - 1, self.zc)
+            },
+        }
+    }
 }
 
 #[derive(
-    Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize,
-    Add, Sub, Mul, Rem, Div, Shr, Shl,
-    AddAssign, SubAssign, MulAssign, DivAssign, RemAssign, ShrAssign, ShlAssign
+    Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize
 )]
 pub struct InnerIdx(usize);
 
@@ -319,6 +320,7 @@ impl Into<usize> for InnerIdx {
 }
 
 impl InnerPos for InnerIdx {
+    type AdjacentPos = InnerIdx;
     fn x(&self) -> usize {
         self.0 % CHUNK_SIZE
     }
@@ -327,6 +329,20 @@ impl InnerPos for InnerIdx {
     }
     fn z(&self) -> usize {
         self.0 / (CHUNK_SIZE * CHUNK_SIZE)
+    }
+    fn adjacent(&self, face : Face) -> Option<Self::AdjacentPos> {
+        match face {
+            Face::Back => if self.0 < CHUNK_SIZE*CHUNK_SIZE {None} else {
+                Some(InnerIdx(self.0 - CHUNK_SIZE*CHUNK_SIZE))
+            },
+            Face::Front => InnerIdx::new(self.0 + CHUNK_SIZE*CHUNK_SIZE),
+            Face::Right => if self.0 == 0 {None} else {Some(InnerIdx(self.0 - 1))},
+            Face::Left => InnerIdx::new(self.0 + 1),
+            Face::Top => InnerIdx::new(self.0 + CHUNK_SIZE),
+            Face::Bottom =>  if self.0 < CHUNK_SIZE {None} else {
+                Some(InnerIdx(self.0 - CHUNK_SIZE))
+            },
+        }
     }
 }
 
