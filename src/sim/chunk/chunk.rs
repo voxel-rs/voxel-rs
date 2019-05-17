@@ -168,11 +168,8 @@ impl Chunk {
         ChunkContents(self.blocks, self.version)
     }
     /// Set the block at i_pos to block
-    pub fn set(&mut self, block : BlockId, i_pos : InnerCoords) {
-        let x = i_pos[0] as usize;
-        let y = i_pos[1] as usize;
-        let z = i_pos[2] as usize;
-        self.blocks[x][y][z] = block;
+    pub fn set<T : InnerPos>(&mut self, block : BlockId, pos : T) {
+        self.blocks[pos.x()][pos.y()][pos.z()] = block;
         self.version += 1;
     }
     /// Check whether this chunk is empty
