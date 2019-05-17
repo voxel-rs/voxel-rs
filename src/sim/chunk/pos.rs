@@ -222,22 +222,28 @@ pub trait InnerPos {
 }
 
 #[derive(
-    Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize, From
+    Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize,
 )]
 pub struct InnerCoords{
     xc : u8, yc : u8, zc : u8
 }
 
 impl InnerCoords {
-    pub fn new<T : Into<u8>>(x : T, y : T, z : T) -> Option<InnerCoords> {
+    pub fn new<T : Into<usize>>(x : T, y : T, z : T) -> Option<InnerCoords> {
         let xc = x.into();
         let yc = y.into();
         let zc = z.into();
-        if xc > CHUNK_SIZE as u8 || yc > CHUNK_SIZE as u8 || zc > CHUNK_SIZE as u8 {
+        if xc >= CHUNK_SIZE || yc >= CHUNK_SIZE || zc >= CHUNK_SIZE {
             None
         } else {
-            Some(InnerCoords{ xc : xc, yc : yc, zc : zc })
+            Some(InnerCoords{ xc : xc as u8, yc : yc as u8, zc : zc as u8 })
         }
+    }
+}
+
+impl<T: Into<usize>> From<(T, T, T)> for InnerCoords {
+    fn from(tup : (T, T, T)) -> InnerCoords {
+        InnerCoords::new(tup.0.into(), tup.1.into(), tup.2.into()).unwrap()
     }
 }
 

@@ -1,7 +1,7 @@
 //! The meshing thread computes chunk meshes from `ChunkArray`s.
 //! It it used to offload computation-intensive operations from the input thread.
 
-use crate::util::{Face, Faces};
+use crate::util::Faces;
 use crate::{
     block::{BlockRegistry, Block},
     core::messages::client::{ToInput, ToMeshing},

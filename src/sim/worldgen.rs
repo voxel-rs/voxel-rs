@@ -2,7 +2,7 @@
 //! It it used to offload computation-intensive operations from the game thread.
 
 use crate::block::BlockId;
-use super::chunk::{ChunkArray, ChunkPos, ChunkContents};
+use super::chunk::{Chunk, ChunkPos, InnerCoords};
 use crate::core::messages::server::{ToGame, ToWorldgen};
 use crate::CHUNK_SIZE;
 
@@ -17,7 +17,7 @@ pub fn start(rx: Receiver<ToWorldgen>, game_tx: Sender<ToGame>) {
         match message {
             ToWorldgen::GenerateChunk(pos) => {
                 game_tx
-                    .send(ToGame::NewChunk(pos, ChunkContents(generator.generate(pos), 0), false))
+                    .send(ToGame::NewChunk(pos, generator.generate(pos), false))
                     .unwrap();
             }
         }
@@ -35,10 +35,10 @@ impl ChunkGenerator {
         ChunkGenerator { perlin }
     }
 
-    pub fn generate(&mut self, pos: ChunkPos) -> Box<ChunkArray> {
+    pub fn generate(&mut self, pos: ChunkPos) -> Chunk {
         //println!("[Server] Game: generating chunk @ {:?}", pos);
         let (cx, cy, cz) = (pos[0], pos[1], pos[2]);
-        let mut chunk = [[[BlockId::from(0); CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE];
+        let mut chunk = Chunk::empty();
         let seed = ((cx * 4242424242 + cz) % 1_000_000_007).abs();
         let mut seed_array = [0; 32];
         for i in 0..32 {
@@ -65,18 +65,18 @@ impl ChunkGenerator {
 
                     if (cy * CHUNK_SIZE as i64 + k as i64) < height {
                         // Dirt
-                        chunk[i][k][j] = BlockId::from(1);
+                        chunk.set::<InnerCoords>((i, k, j).into(), BlockId::from(1));
                         if (cy * CHUNK_SIZE as i64 + k as i64) < height - 5 {
                             // Stone
                             if coal_noise > 10 && coal_noise < 15 {
-                                chunk[i][k][j] = BlockId::from(6);
+                                chunk.set::<InnerCoords>((i, k, j).into(), BlockId::from(6));
                             } else {
-                                chunk[i][k][j] = BlockId::from(5);
+                                chunk.set::<InnerCoords>((i, k, j).into(), BlockId::from(5));
                             }
                         }
                     } else if (cy * CHUNK_SIZE as i64 + k as i64) == height {
                         // Grass
-                        chunk[i][k][j] = BlockId::from(2);
+                        chunk.set::<InnerCoords>((i, k, j).into(), BlockId::from(2));
                     }
                 }
 
@@ -124,7 +124,7 @@ impl ChunkGenerator {
                         {
                             let cd = cy * CHUNK_SIZE as i64 + k as i64;
                             if cd > height - cave_deep - 5 && cd <= height - cave_deep {
-                                chunk[i][k][j] = BlockId::from(0); // TO DO : REPLACE WITH FILL SPHERE
+                                chunk.set::<InnerCoords>((i, k, j).into(), BlockId::from(0)); // TO DO : REPLACE WITH FILL SPHERE
                             }
                         }
                     }
@@ -147,7 +147,10 @@ impl ChunkGenerator {
                     0.005 * (0.0021 + (CHUNK_SIZE as i64 * cz + y as i64) as f64 / 3.0),
                 ])) as i64;
             if cy * CHUNK_SIZE as i64 <= height + i && height + i < (cy + 1) * CHUNK_SIZE as i64 {
-                chunk[x][(height - cy * CHUNK_SIZE as i64 + i) as usize][y] = BlockId::from(3);
+                chunk.set::<InnerCoords>(
+                    (x, (height - cy * CHUNK_SIZE as i64 + i) as usize, y).into(),
+                    BlockId::from(3)
+                );
             }
             for ii in (-3i64)..4 {
                 for j in (-3i64)..4 {
@@ -175,8 +178,8 @@ impl ChunkGenerator {
                                 let xx = xx as usize;
                                 let yy = yy as usize;
                                 let zz = zz as usize;
-                                if chunk[xx][zz][yy] == BlockId::from(0) {
-                                    chunk[xx][zz][yy] = BlockId::from(4);
+                                if *chunk.get::<InnerCoords>((xx, zz, yy).into()) == BlockId::from(0) {
+                                    chunk.set::<InnerCoords>((xx, zz, yy).into(), BlockId::from(4));
                                 }
                             }
                         }
@@ -185,6 +188,6 @@ impl ChunkGenerator {
             }
         }
 
-        Box::new(chunk)
+        chunk
     }
 }

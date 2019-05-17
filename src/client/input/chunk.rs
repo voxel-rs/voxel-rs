@@ -2,7 +2,7 @@
 use crate::client::input::BufferHandle3D;
 use crate::sim::chunk::{ChunkArray, ChunkSidesArray};
 use crate::block::{Block, BlockId, BlockRegistry};
-use crate::util::{Faces, Face};
+use crate::util::Faces;
 use crate::CHUNK_SIZE;
 use crate::Vertex;
 

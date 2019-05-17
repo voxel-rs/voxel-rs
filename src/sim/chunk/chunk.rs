@@ -1,4 +1,4 @@
-use crate::util::Faces;
+use crate::util::{Face, Faces};
 
 use serde::{Serialize, Deserialize};
 use enumset::{EnumSet, EnumSetType};
@@ -144,7 +144,7 @@ impl ChunkData {
 }
 
 /// A server-side chunk
-#[derive(Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Chunk {
     /// An array containing the blocks of this chunk
     blocks : Box<ChunkArray>,
@@ -154,6 +154,14 @@ pub struct Chunk {
 }
 
 impl Chunk {
+    /// Create a new, empty chunk:
+    pub fn empty() -> Chunk {
+        Chunk {
+            blocks : Box::new([[[BlockId::from(0); CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE]),
+            sides : Box::new(ChunkSimArray::empty()),
+            version : 0
+        }
+    }
     /// Iterate over the slices of blocks in this chunk
     #[allow(dead_code)]
     pub fn slices(&self) -> impl Iterator<Item = &[ChunkFragment; CHUNK_SIZE]> {
@@ -182,7 +190,7 @@ impl Chunk {
         ChunkContents(self.blocks, self.version)
     }
     /// Set the block at i_pos to block
-    pub fn set<T : InnerPos>(&mut self, block : BlockData, pos : T) {
+    pub fn set<T : InnerPos>(&mut self, pos : T, block : BlockData) {
         //TODO: use block registry
         // Update physics state:
         if block == BlockId::from(0) {

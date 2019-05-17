@@ -43,7 +43,7 @@ impl ChunkMap {
             None => {print!("Failed to set {:?} : {:?} to {:?}!\n", pos, i_pos, block);},
             Some(ref mut state) => {
                 print!("Setting {:?} : {:?} to {:?}!\n", pos, i_pos, block);
-                state.set(block, i_pos);
+                state.set(i_pos, block);
             }
         }
 

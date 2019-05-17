@@ -48,7 +48,7 @@ pub mod messages {
 
     /// Server-to-server messages.
     pub mod server {
-        use crate::sim::chunk::{ChunkContents, ChunkPos, WorldPos};
+        use crate::sim::chunk::{ChunkContents, ChunkPos, WorldPos, Chunk};
         use crate::network::ConnectionId;
         use crate::sim::player::PlayerInput;
 
@@ -60,7 +60,7 @@ pub mod messages {
         #[derive(Debug)]
         pub enum ToGame {
             PlayerEvent(ConnectionId, ToGamePlayer),
-            NewChunk(ChunkPos, ChunkContents, bool),
+            NewChunk(ChunkPos, Chunk, bool),
         }
 
         #[derive(Debug)]
