@@ -114,6 +114,8 @@ impl BVSpawner for Chunk {
         if self.is_empty() {
             return;
         }
+        // Check if something is inside the desired collider:
+        
         let collider = ColliderDesc::new(CHUNK_SHAPE.clone())
             .translation(coords.center())
             .build_with_parent(body, world)

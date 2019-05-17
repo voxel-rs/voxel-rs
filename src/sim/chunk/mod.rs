@@ -1,12 +1,13 @@
 use crate::block::BlockId;
 use crate::CHUNK_SIZE;
+use crate::util::Faces;
 use serde_derive::{Deserialize, Serialize};
 use derive_more::From;
 
 pub type BlockData = BlockId;
 pub type ChunkFragment = [BlockData; CHUNK_SIZE];
 pub type ChunkArray = [[ChunkFragment; CHUNK_SIZE]; CHUNK_SIZE];
-pub type ChunkSidesArray = [[[u8; CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE];
+pub type ChunkSidesArray = [[[Faces; CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE];
 
 mod pos;
 pub use pos::*;

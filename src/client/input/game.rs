@@ -1,6 +1,7 @@
 use super::*;
 use crate::block::Block;
 use crate::sim::chunk::SubIndex;
+use crate::util::{Face, Faces};
 
 
 use gfx::Device;
@@ -86,20 +87,20 @@ impl InputImpl {
         modified : bool
     ) {
         if data.fragments == CHUNK_SIZE * CHUNK_SIZE {
-            for face in 0..6 {
-                let adj = ADJ_CHUNKS[face];
+            for face in Faces::all().iter() {
+                let adj = ADJ_CHUNKS[face as usize];
                 let mut pos = pos;
                 for i in 0..3 {
                     pos[i] += adj[i];
                 }
                 if let Some(c) = chunks.get(&pos) {
                     let mut adj_chunk = c.borrow_mut();
-                    if modified || adj_chunk.adj_chunks & (1 << face) == 0 {
-                        adj_chunk.adj_chunks |= 1 << face;
+                    if modified || (adj_chunk.adj_chunks & face).is_empty() {
+                        adj_chunk.adj_chunks |= face;
                         // We update that adjacent chunk's sides with the current chunk !
                         Self::update_side(
                             // It should be the opposite face from the adjacent chunk's POV, so we XOR 1 to flip the last bit
-                            face ^ 1,
+                            face.flip(),
                             &data,
                             &mut adj_chunk,
                             br,
@@ -139,7 +140,7 @@ impl InputImpl {
                                 latest : 0,
                                 latest_fragments : 0,
                                 current : 0,
-                                adj_chunks: 0,
+                                adj_chunks: Faces::empty(),
                                 chunk_info: [0; CHUNK_SIZE * CHUNK_SIZE / 32],
                                 state: ChunkState::Unmeshed,
                                 hot: false
@@ -159,7 +160,7 @@ impl InputImpl {
         for (pos, chunk) in self.game_state.chunks.iter() {
             let mut c = chunk.borrow_mut();
             // TODO: FRAGMENT_COUNT const
-            if c.adj_chunks == 0b00111111 && c.fragments == CHUNK_SIZE * CHUNK_SIZE {
+            if c.adj_chunks == Faces::all() && c.fragments == CHUNK_SIZE * CHUNK_SIZE {
                 let mut update_state = false;
                 if let ChunkState::Unmeshed = c.state {
                     update_state = true;
@@ -201,8 +202,8 @@ impl InputImpl {
     }
 
     /// Update side [face] in the [sides] of some chunk with its adjacent chunk [c].
-    fn update_side(face: usize, cd: &ChunkData, a: &mut ChunkData, br: &BlockRegistry, modified : bool) {
-        let adj = ADJ_CHUNKS[face];
+    fn update_side(face: Face, cd: &ChunkData, a: &mut ChunkData, br: &BlockRegistry, modified : bool) {
+        let adj = ADJ_CHUNKS[face as usize];
 
         let c = &cd.chunk;
         let sides = &mut a.chunk.sides;
@@ -214,7 +215,7 @@ impl InputImpl {
                     Self::get_range(adj[2], true).zip(Self::get_range(adj[2], false))
                 {
                     if !br.get_block(c.blocks[ext_x][ext_y][ext_z]).is_opaque() {
-                        sides[int_x][int_y][int_z] |= 1 << face;
+                        sides[int_x][int_y][int_z] |= face;
                         a.hot |= modified; // Needs a re-rendering
                     }
                 }

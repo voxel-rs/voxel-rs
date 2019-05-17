@@ -50,7 +50,7 @@ impl InputImpl {
                             println!("Player position: {:?}", self.input_state.camera.get_pos());
                             let player_chunk : ChunkPos = self.input_state.camera.get_pos().high();
                             let c = self.game_state.chunks.get(&player_chunk).unwrap().borrow();
-                            println!("Player chunk: {:?} (fragment_count: {}, adj_chunks: {}, state: {:?})", player_chunk, c.fragments, c.adj_chunks, c.state);
+                            println!("Player chunk: {:?} (fragment_count: {}, adj_chunks: {:?}, state: {:?})", player_chunk, c.fragments, c.adj_chunks, c.state);
                         } else {
                             self.input_state.mouse_state = state
                         }

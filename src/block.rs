@@ -3,12 +3,13 @@ use crate::texture::TextureRegistry;
 use crate::Vertex;
 use serde_derive::{Deserialize, Serialize};
 use derive_more::{From};
+use crate::util::Faces;
 
 /// Block representation
 pub trait Block {
     /// Append the block's vertices to the rendering Vertex Buffers
     /// TODO: Use the Vertex type instead of Vec<>
-    fn render(&self, vertices: &mut Vec<Vertex>, adj: u8, delta: [u64; 3]);
+    fn render(&self, vertices: &mut Vec<Vertex>, adj: Faces, delta: [u64; 3]);
     /// Does this block hide adjacent blocks ?
     fn is_opaque(&self) -> bool;
     /// What state of matter is this block (matters for physics)
@@ -50,7 +51,7 @@ pub enum BlockObj {
 }
 
 impl Block for BlockObj {
-    fn render(&self, vertices: &mut Vec<Vertex>, adj: u8, delta: [u64; 3]) {
+    fn render(&self, vertices: &mut Vec<Vertex>, adj: Faces, delta: [u64; 3]) {
         match self {
             BlockObj::Gas(g) => g.render(vertices, adj, delta),
             BlockObj::Cube(c) => c.render(vertices, adj, delta),
@@ -100,9 +101,9 @@ impl From<u16> for BlockId {
 }
 
 impl Block for BlockCube {
-    fn render(&self, vertices: &mut Vec<Vertex>, adj: u8, delta: [u64; 3]) {
-        for face in 0..6 {
-            if adj & (1 << face) > 0 {
+    fn render(&self, vertices: &mut Vec<Vertex>, adj: Faces, delta: [u64; 3]) {
+        for face in Faces::all().iter() {
+            if !(adj & face).is_empty() {
                 let side = &FACES[face as usize];
                 for &pos in &FACE_ORDER {
                     let mut coords = VERTICES[side[pos]];
@@ -149,7 +150,7 @@ pub fn create_block_air() -> BlockGas {
 }
 
 impl Block for BlockGas {
-    fn render(&self, _: &mut Vec<Vertex>, _: u8, _: [u64; 3]) {}
+    fn render(&self, _: &mut Vec<Vertex>, _: Faces, _: [u64; 3]) {}
 
     fn is_opaque(&self) -> bool {
         false

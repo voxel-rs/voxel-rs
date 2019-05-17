@@ -1,6 +1,7 @@
 //! The meshing thread computes chunk meshes from `ChunkArray`s.
 //! It it used to offload computation-intensive operations from the input thread.
 
+use crate::util::{Face, Faces};
 use crate::{
     block::{BlockRegistry, Block},
     core::messages::client::{ToInput, ToMeshing},
@@ -75,8 +76,8 @@ impl MeshingImpl {
         for i in 0..sz {
             for j in 0..sz {
                 for k in 0..sz {
-                    for side in 0..6 {
-                        let adj = ADJ_CHUNKS[side];
+                    for side in Faces::all().iter() {
+                        let adj = ADJ_CHUNKS[side as usize];
                         let (x, y, z) = (i + adj[0], j + adj[1], k + adj[2]);
                         if 0 <= x && x < sz && 0 <= y && y < sz && 0 <= z && z < sz {
                             if !self
@@ -84,7 +85,7 @@ impl MeshingImpl {
                                 .get_block(blocks[x as usize][y as usize][z as usize])
                                 .is_opaque()
                             {
-                                chunk.sides[i as usize][j as usize][k as usize] |= 1 << side;
+                                chunk.sides[i as usize][j as usize][k as usize] |= side;
                             }
                         }
                     }

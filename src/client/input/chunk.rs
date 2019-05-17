@@ -2,6 +2,7 @@
 use crate::client::input::BufferHandle3D;
 use crate::sim::chunk::{ChunkArray, ChunkSidesArray};
 use crate::block::{Block, BlockId, BlockRegistry};
+use crate::util::{Faces, Face};
 use crate::CHUNK_SIZE;
 use crate::Vertex;
 
@@ -22,7 +23,7 @@ impl Chunk {
     pub fn new() -> Chunk {
         Chunk {
             blocks: Box::new([[[BlockId(0); CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE]),
-            sides: Box::new([[[0b00000000; CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE]),
+            sides: Box::new([[[Faces::new(); CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE]),
         }
     }
 
@@ -32,7 +33,7 @@ impl Chunk {
             for j in 0..CHUNK_SIZE {
                 for k in 0..CHUNK_SIZE {
                     // Don't render hidden blocks
-                    if self.sides[i][j][k] != 0xFF {
+                    if self.sides[i][j][k] != Faces::all() {
                         blocks.get_block(self.blocks[i][j][k]).render(
                             &mut vec,
                             self.sides[i][j][k],
@@ -60,8 +61,8 @@ pub(super) struct ChunkData {
     /// Current fragment version
     pub current : u64,
     /// What adjacent chunks are loaded. This is a bit mask, and 1 means loaded.
-    /// All chunks loaded means that adj_chunks == 0b00111111
-    pub adj_chunks: u8,
+    /// All chunks loaded means that adj_chunks == 0b00111111 (Faces::all())
+    pub adj_chunks: Faces,
     /// The loaded bits
     pub chunk_info: ChunkInfo,
     /// The chunk's state
