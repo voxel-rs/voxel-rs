@@ -205,6 +205,8 @@ impl IndexMut<usize> for ChunkPos {
     }
 }
 
+pub trait InnerPos : Into<InnerCoords> + Into<InnerIdx> {}
+
 #[derive(
     Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize, From,
     Add, Sub, Mul, Rem, Div, Shr, Shl,
@@ -243,6 +245,48 @@ impl From<[u8; 3]> for InnerCoords {
         (pos[0], pos[1], pos[2]).into()
     }
 }
+
+impl Into<InnerIdx> for InnerCoords {
+    fn into(self) -> InnerIdx {
+        InnerIdx(
+            (self.x as usize)
+            + (self.y as usize) * CHUNK_SIZE
+            + (self.z as usize) * CHUNK_SIZE * CHUNK_SIZE)
+    }
+}
+
+impl InnerPos for InnerCoords {}
+
+#[derive(
+    Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize, From,
+    Add, Sub, Mul, Rem, Div, Shr, Shl,
+    AddAssign, SubAssign, MulAssign, DivAssign, RemAssign, ShrAssign, ShlAssign
+)]
+pub struct InnerIdx(usize);
+
+impl InnerIdx {
+    pub fn x(&self) -> usize {
+        self.0 % CHUNK_SIZE
+    }
+    pub fn y(&self) -> usize {
+        self.0 / CHUNK_SIZE
+    }
+    pub fn z(&self) -> usize {
+        self.0 / (CHUNK_SIZE * CHUNK_SIZE)
+    }
+}
+
+impl Into<InnerCoords> for InnerIdx {
+    fn into(self) -> InnerCoords {
+        [
+            self.x() as u8,
+            self.y() as u8,
+            self.z() as u8
+        ].into()
+    }
+}
+
+
 
 #[derive(
     Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize, From,
