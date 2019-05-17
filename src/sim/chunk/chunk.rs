@@ -1,6 +1,6 @@
 use serde::{Serialize, Deserialize};
 use enumset::{EnumSet, EnumSetType};
-use derive_more::{Index, IndexMut};
+use std::ops::{Index, IndexMut};
 use super::*;
 
 #[derive(Debug, EnumSetType, Serialize, Deserialize)]
@@ -16,12 +16,26 @@ pub enum SimFace {
 
 type SimFaces = EnumSet<SimFace>;
 
-#[derive(Debug, Clone, Serialize, Deserialize, Index, IndexMut)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChunkSimArray([[[SimFaces; CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE]);
 
 impl ChunkSimArray {
     pub fn empty() -> ChunkSimArray {
         ChunkSimArray([[[SimFaces::empty(); CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE])
+    }
+}
+
+impl<T: InnerPos> Index<T> for ChunkSimArray {
+    type Output = SimFaces;
+
+    fn index(&self, pos : T) -> &SimFaces {
+        &self.0[pos.x()][pos.y()][pos.z()]
+    }
+}
+
+impl<T: InnerPos> IndexMut<T> for ChunkSimArray {
+    fn index_mut(&mut self, pos : T) -> &mut SimFaces {
+        &mut self.0[pos.x()][pos.y()][pos.z()]
     }
 }
 
