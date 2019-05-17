@@ -116,14 +116,25 @@ pub struct Chunk {
 }
 
 impl Chunk {
-    /// Iterate over the blocks in this chunk
+    /// Iterate over the slices of blocks in this chunk
     #[allow(dead_code)]
     pub fn slices(&self) -> impl Iterator<Item = &[ChunkFragment; CHUNK_SIZE]> {
         self.blocks.iter() //TODO
     }
+    /// Iterate over mutable slices of blocks in this chunk
     #[allow(dead_code)]
     pub fn slices_mut(&mut self) -> impl Iterator<Item=&mut [ChunkFragment; CHUNK_SIZE]> {
         self.blocks.iter_mut()
+    }
+    /// Get access to the sides array of this chunk
+    #[allow(dead_code)]
+    pub fn sides(&self) -> &ChunkSimArray {
+        &self.sides
+    }
+    /// Mutate the sides array of this chunk
+    #[allow(dead_code)]
+    pub fn sides_mut(&mut self) -> &ChunkSimArray {
+        &mut self.sides
     }
     /// What version is this chunk (version 0 is freshly generated)
     pub fn get_version(&self) -> u64 {
