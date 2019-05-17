@@ -20,20 +20,29 @@ type SimFaces = EnumSet<SimFace>;
 pub struct ChunkSimArray([[[SimFaces; CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE]);
 
 impl ChunkSimArray {
+    /// Get an empty ChunkSimArray (where no faces of any block are simulated)
     pub fn empty() -> ChunkSimArray {
         ChunkSimArray([[[SimFaces::empty(); CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE])
     }
     #[allow(dead_code)]
+    /// Get an iterator over the simulated faces for each block in a chunk
     pub fn iter(&self) -> impl Iterator<Item=&SimFaces>  {
         InnerIdx::indices().map(move |i| &self[i])
     }
+    /// Get an iterator over slices of this ChunkSimArray
     #[allow(dead_code)]
     pub fn slices(&self) -> impl Iterator<Item=&[[SimFaces; CHUNK_SIZE]; CHUNK_SIZE]> {
         self.0.iter()
     }
+    /// Get a mutable iterator over slices of this ChunkSimArray
     #[allow(dead_code)]
     pub fn slices_mut(&mut self) -> impl Iterator<Item=&mut [[SimFaces; CHUNK_SIZE]; CHUNK_SIZE]> {
         self.0.iter_mut()
+    }
+    /// Set this ChunkSimArray to empty
+    #[allow(dead_code)]
+    pub fn blank(&mut self) {
+        *self = Self::empty()
     }
 }
 
