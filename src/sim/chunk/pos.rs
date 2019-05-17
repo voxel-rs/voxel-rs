@@ -269,6 +269,11 @@ impl InnerPos for InnerCoords {
 )]
 pub struct InnerIdx(usize);
 
+impl InnerIdx {
+    pub fn indices() -> impl Iterator<Item=InnerIdx> {
+        (0..(CHUNK_SIZE*CHUNK_SIZE*CHUNK_SIZE)).map(|i| InnerIdx(i))
+    }
+}
 
 impl InnerPos for InnerIdx {
     fn x(&self) -> usize {

@@ -23,6 +23,10 @@ impl ChunkSimArray {
     pub fn empty() -> ChunkSimArray {
         ChunkSimArray([[[SimFaces::empty(); CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE])
     }
+    #[allow(dead_code)]
+    pub fn iter(&self) -> impl Iterator<Item=&SimFaces>  {
+        InnerIdx::indices().map(move |i| &self[i])
+    }
 }
 
 impl<T: InnerPos> Index<T> for ChunkSimArray {
