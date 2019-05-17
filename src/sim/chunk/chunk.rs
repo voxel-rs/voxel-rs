@@ -1,3 +1,5 @@
+use crate::util::{Face, Faces};
+
 use serde::{Serialize, Deserialize};
 use enumset::{EnumSet, EnumSetType};
 use std::ops::{Index, IndexMut};
@@ -12,6 +14,19 @@ pub enum SimFace {
     Top = 4,
     Bottom = 5,
     This = 6
+}
+
+impl From<Face> for SimFace {
+    fn from(face : Face) -> SimFace {
+        match face {
+            Face::Back => SimFace::Back,
+            Face::Front => SimFace::Front,
+            Face::Right => SimFace::Right,
+            Face::Left => SimFace::Left,
+            Face::Top => SimFace::Top,
+            Face::Bottom => SimFace::Bottom
+        }
+    }
 }
 
 type SimFaces = EnumSet<SimFace>;
@@ -167,7 +182,14 @@ impl Chunk {
         ChunkContents(self.blocks, self.version)
     }
     /// Set the block at i_pos to block
-    pub fn set<T : InnerPos>(&mut self, block : BlockId, pos : T) {
+    pub fn set<T : InnerPos>(&mut self, block : BlockData, pos : T) {
+        //TODO: use block registry
+        // Update physics state:
+        if block == BlockId::from(0) {
+            // Now all neighboring blocks are visible from the appropriate side
+        } else {
+            // Now all neighboring blocks are invisible from the appropriate side
+        }
         self.blocks[pos.x()][pos.y()][pos.z()] = block;
         self.version += 1;
     }

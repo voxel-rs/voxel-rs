@@ -120,11 +120,11 @@ impl SubIndex<ChunkPos> for BlockPos {
     }
 
     fn low(&self) -> InnerCoords {
-        [
+        InnerCoords::new(
             (self.x as u8) % (CHUNK_SIZE as u8),
             (self.y as u8) % (CHUNK_SIZE as u8),
             (self.z as u8) % (CHUNK_SIZE as u8)
-        ].into()
+        ).unwrap()
     }
 
 }
@@ -215,6 +215,22 @@ pub trait InnerPos {
     fn idx(&self) -> InnerIdx {
         InnerIdx(self.x() + self.y() * CHUNK_SIZE + self.z() * CHUNK_SIZE * CHUNK_SIZE)
     }
+    #[inline]
+    fn transform(&self, delta : &[i64; 3]) -> Option<InnerCoords> {
+        let xi = self.x() as i64 + delta[0];
+        if xi < 0 || xi > CHUNK_SIZE as i64 {
+            return None;
+        }
+        let yi = self.y() as i64 + delta[1];
+        if yi < 0 || yi > CHUNK_SIZE as i64 {
+            return None;
+        }
+        let zi = self.z() as i64 + delta[2];
+        if zi < 0 || zi > CHUNK_SIZE as i64 {
+            return None;
+        }
+        Some((xi as u8, yi as u8, zi as u8).into())
+    }
 }
 
 #[derive(
@@ -224,6 +240,19 @@ pub trait InnerPos {
 )]
 pub struct InnerCoords{
     xc : u8, yc : u8, zc : u8
+}
+
+impl InnerCoords {
+    pub fn new<T : Into<u8>>(x : T, y : T, z : T) -> Option<InnerCoords> {
+        let xc = x.into();
+        let yc = y.into();
+        let zc = z.into();
+        if xc > CHUNK_SIZE as u8 || yc > CHUNK_SIZE as u8 || zc > CHUNK_SIZE as u8 {
+            None
+        } else {
+            Some(InnerCoords{ xc : xc, yc : yc, zc : zc })
+        }
+    }
 }
 
 impl Index<usize> for InnerCoords {
@@ -250,12 +279,6 @@ impl IndexMut<usize> for InnerCoords {
     }
 }
 
-impl From<[u8; 3]> for InnerCoords {
-    fn from(pos : [u8; 3]) -> InnerCoords {
-        (pos[0], pos[1], pos[2]).into()
-    }
-}
-
 impl InnerPos for InnerCoords {
     fn x(&self) -> usize {self.xc as usize}
     fn y(&self) -> usize {self.yc as usize}
@@ -263,7 +286,7 @@ impl InnerPos for InnerCoords {
 }
 
 #[derive(
-    Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize, From,
+    Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize,
     Add, Sub, Mul, Rem, Div, Shr, Shl,
     AddAssign, SubAssign, MulAssign, DivAssign, RemAssign, ShrAssign, ShlAssign
 )]
@@ -272,6 +295,26 @@ pub struct InnerIdx(usize);
 impl InnerIdx {
     pub fn indices() -> impl Iterator<Item=InnerIdx> {
         (0..(CHUNK_SIZE*CHUNK_SIZE*CHUNK_SIZE)).map(|i| InnerIdx(i))
+    }
+    pub fn new<T: Into<usize>>(i : T) -> Option<InnerIdx> {
+        let i = i.into();
+        if i < CHUNK_SIZE*CHUNK_SIZE*CHUNK_SIZE {
+            Some(InnerIdx(i))
+        } else {
+            None
+        }
+    }
+}
+
+impl From<usize> for InnerIdx {
+    fn from(i : usize) -> InnerIdx {
+        InnerIdx::new(i).unwrap()
+    }
+}
+
+impl Into<usize> for InnerIdx {
+    fn into(self) -> usize {
+        self.0
     }
 }
 
