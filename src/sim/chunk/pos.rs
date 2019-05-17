@@ -205,10 +205,16 @@ impl IndexMut<usize> for ChunkPos {
     }
 }
 
-pub trait InnerPos : Into<InnerCoords> + Into<InnerIdx> {
+pub trait InnerPos {
     fn x(&self) -> usize;
     fn y(&self) -> usize;
     fn z(&self) -> usize;
+    fn to_coords(&self) -> InnerCoords {
+        (self.x() as u8, self.y() as u8, self.z() as u8).into()
+    }
+    fn idx(&self) -> InnerIdx {
+        InnerIdx(self.x() + self.y() * CHUNK_SIZE + self.z() * CHUNK_SIZE * CHUNK_SIZE)
+    }
 }
 
 #[derive(
@@ -250,15 +256,6 @@ impl From<[u8; 3]> for InnerCoords {
     }
 }
 
-impl Into<InnerIdx> for InnerCoords {
-    fn into(self) -> InnerIdx {
-        InnerIdx(
-            self.x()
-            + self.y() * CHUNK_SIZE
-            + self.z() * CHUNK_SIZE * CHUNK_SIZE)
-    }
-}
-
 impl InnerPos for InnerCoords {
     fn x(&self) -> usize {self.xc as usize}
     fn y(&self) -> usize {self.yc as usize}
@@ -272,15 +269,6 @@ impl InnerPos for InnerCoords {
 )]
 pub struct InnerIdx(usize);
 
-impl Into<InnerCoords> for InnerIdx {
-    fn into(self) -> InnerCoords {
-        [
-            self.x() as u8,
-            self.y() as u8,
-            self.z() as u8
-        ].into()
-    }
-}
 
 impl InnerPos for InnerIdx {
     fn x(&self) -> usize {
