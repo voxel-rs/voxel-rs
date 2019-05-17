@@ -205,7 +205,11 @@ impl IndexMut<usize> for ChunkPos {
     }
 }
 
-pub trait InnerPos : Into<InnerCoords> + Into<InnerIdx> {}
+pub trait InnerPos : Into<InnerCoords> + Into<InnerIdx> {
+    fn x(&self) -> usize;
+    fn y(&self) -> usize;
+    fn z(&self) -> usize;
+}
 
 #[derive(
     Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize, From,
@@ -213,7 +217,7 @@ pub trait InnerPos : Into<InnerCoords> + Into<InnerIdx> {}
     AddAssign, SubAssign, MulAssign, DivAssign, RemAssign, ShrAssign, ShlAssign
 )]
 pub struct InnerCoords{
-    pub x : u8, pub y : u8, pub z : u8
+    xc : u8, yc : u8, zc : u8
 }
 
 impl Index<usize> for InnerCoords {
@@ -221,9 +225,9 @@ impl Index<usize> for InnerCoords {
 
     fn index(&self, idx : usize) -> &u8 {
         match idx {
-            0 => &self.x,
-            1 => &self.y,
-            2 => &self.z,
+            0 => &self.xc,
+            1 => &self.yc,
+            2 => &self.zc,
             _ => panic!("Index out of bounds!")
         }
     }
@@ -232,9 +236,9 @@ impl Index<usize> for InnerCoords {
 impl IndexMut<usize> for InnerCoords {
     fn index_mut(&mut self, idx : usize) -> &mut u8 {
         match idx {
-            0 => &mut self.x,
-            1 => &mut self.y,
-            2 => &mut self.z,
+            0 => &mut self.xc,
+            1 => &mut self.yc,
+            2 => &mut self.zc,
             _ => panic!("Index out of bounds!")
         }
     }
@@ -249,13 +253,17 @@ impl From<[u8; 3]> for InnerCoords {
 impl Into<InnerIdx> for InnerCoords {
     fn into(self) -> InnerIdx {
         InnerIdx(
-            (self.x as usize)
-            + (self.y as usize) * CHUNK_SIZE
-            + (self.z as usize) * CHUNK_SIZE * CHUNK_SIZE)
+            self.x()
+            + self.y() * CHUNK_SIZE
+            + self.z() * CHUNK_SIZE * CHUNK_SIZE)
     }
 }
 
-impl InnerPos for InnerCoords {}
+impl InnerPos for InnerCoords {
+    fn x(&self) -> usize {self.xc as usize}
+    fn y(&self) -> usize {self.yc as usize}
+    fn z(&self) -> usize {self.zc as usize}
+}
 
 #[derive(
     Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize, From,
@@ -264,18 +272,6 @@ impl InnerPos for InnerCoords {}
 )]
 pub struct InnerIdx(usize);
 
-impl InnerIdx {
-    pub fn x(&self) -> usize {
-        self.0 % CHUNK_SIZE
-    }
-    pub fn y(&self) -> usize {
-        self.0 / CHUNK_SIZE
-    }
-    pub fn z(&self) -> usize {
-        self.0 / (CHUNK_SIZE * CHUNK_SIZE)
-    }
-}
-
 impl Into<InnerCoords> for InnerIdx {
     fn into(self) -> InnerCoords {
         [
@@ -283,6 +279,18 @@ impl Into<InnerCoords> for InnerIdx {
             self.y() as u8,
             self.z() as u8
         ].into()
+    }
+}
+
+impl InnerPos for InnerIdx {
+    fn x(&self) -> usize {
+        self.0 % CHUNK_SIZE
+    }
+    fn y(&self) -> usize {
+        self.0 / CHUNK_SIZE
+    }
+    fn z(&self) -> usize {
+        self.0 / (CHUNK_SIZE * CHUNK_SIZE)
     }
 }
 
