@@ -1,4 +1,29 @@
+use serde::{Serialize, Deserialize};
+use enumset::{EnumSet, EnumSetType};
+use derive_more::{Index, IndexMut};
 use super::*;
+
+#[derive(Debug, EnumSetType, Serialize, Deserialize)]
+pub enum SimFace {
+    Back = 0,
+    Front = 1,
+    Right = 2,
+    Left = 3,
+    Top = 4,
+    Bottom = 5,
+    This = 6
+}
+
+type SimFaces = EnumSet<SimFace>;
+
+#[derive(Debug, Clone, Serialize, Deserialize, Index, IndexMut)]
+pub struct ChunkSimArray([[[SimFaces; CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE]);
+
+impl ChunkSimArray {
+    pub fn empty() -> ChunkSimArray {
+        ChunkSimArray([[[SimFaces::empty(); CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE])
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[allow(dead_code)]
@@ -59,6 +84,7 @@ impl ChunkData {
 pub struct Chunk {
     /// An array containing the blocks of this chunk
     blocks : Box<ChunkArray>,
+    sides : Box<ChunkSimArray>,
     /// The version number of this chunk
     version : u64
 }
@@ -87,7 +113,7 @@ impl Chunk {
         ChunkContents(self.blocks, self.version)
     }
     /// Set the block at i_pos to block
-    pub fn set(&mut self, block : BlockId, i_pos : InnerChunkPos) {
+    pub fn set(&mut self, block : BlockId, i_pos : InnerCoords) {
         let x = i_pos[0] as usize;
         let y = i_pos[1] as usize;
         let z = i_pos[2] as usize;
@@ -111,6 +137,6 @@ impl Chunk {
 
 impl From<ChunkContents> for Chunk {
     fn from(c : ChunkContents) -> Chunk {
-        Chunk{ blocks : c.0, version : c.1 }
+        Chunk{ blocks : c.0, sides : Box::new(ChunkSimArray::empty()), version : c.1 }
     }
 }

@@ -1,4 +1,4 @@
-use super::{ChunkPos, InnerChunkPos, ChunkState};
+use super::{ChunkPos, InnerCoords, ChunkState};
 use crate::block::BlockId;
 
 use hashbrown::hash_map::HashMap;
@@ -38,7 +38,7 @@ impl ChunkMap {
         return self.map.contains_key(pos);
     }
 
-    pub fn set(&mut self, pos : ChunkPos, i_pos : InnerChunkPos, block : BlockId) {
+    pub fn set(&mut self, pos : ChunkPos, i_pos : InnerCoords, block : BlockId) {
         match self.get_mut(&pos) {
             None => {print!("Failed to set {:?} : {:?} to {:?}!\n", pos, i_pos, block);},
             Some(ref mut state) => {

@@ -47,7 +47,7 @@ impl SubIndex<BlockPos> for WorldPos {
 }
 
 impl SubIndex<ChunkPos> for WorldPos {
-    type Remainder = InnerChunkPos;
+    type Remainder = InnerCoords;
 
     fn high(&self) -> ChunkPos {
         use crate::CHUNK_SIZE;
@@ -63,7 +63,7 @@ impl SubIndex<ChunkPos> for WorldPos {
         ret
     }
 
-    fn low(&self) -> InnerChunkPos {
+    fn low(&self) -> InnerCoords {
         let bp : BlockPos = self.high();
         bp.low()
     }
@@ -109,7 +109,7 @@ impl IndexMut<usize> for BlockPos {
 }
 
 impl SubIndex<ChunkPos> for BlockPos {
-    type Remainder = InnerChunkPos;
+    type Remainder = InnerCoords;
 
     fn high(&self) -> ChunkPos {
         [
@@ -119,7 +119,7 @@ impl SubIndex<ChunkPos> for BlockPos {
         ].into()
     }
 
-    fn low(&self) -> InnerChunkPos {
+    fn low(&self) -> InnerCoords {
         [
             (self.x as u8) % (CHUNK_SIZE as u8),
             (self.y as u8) % (CHUNK_SIZE as u8),
@@ -210,11 +210,11 @@ impl IndexMut<usize> for ChunkPos {
     Add, Sub, Mul, Rem, Div, Shr, Shl,
     AddAssign, SubAssign, MulAssign, DivAssign, RemAssign, ShrAssign, ShlAssign
 )]
-pub struct InnerChunkPos{
+pub struct InnerCoords{
     pub x : u8, pub y : u8, pub z : u8
 }
 
-impl Index<usize> for InnerChunkPos {
+impl Index<usize> for InnerCoords {
     type Output = u8;
 
     fn index(&self, idx : usize) -> &u8 {
@@ -227,7 +227,7 @@ impl Index<usize> for InnerChunkPos {
     }
 }
 
-impl IndexMut<usize> for InnerChunkPos {
+impl IndexMut<usize> for InnerCoords {
     fn index_mut(&mut self, idx : usize) -> &mut u8 {
         match idx {
             0 => &mut self.x,
@@ -238,8 +238,8 @@ impl IndexMut<usize> for InnerChunkPos {
     }
 }
 
-impl From<[u8; 3]> for InnerChunkPos {
-    fn from(pos : [u8; 3]) -> InnerChunkPos {
+impl From<[u8; 3]> for InnerCoords {
+    fn from(pos : [u8; 3]) -> InnerCoords {
         (pos[0], pos[1], pos[2]).into()
     }
 }

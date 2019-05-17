@@ -56,7 +56,7 @@ impl ChunkState {
 
     /// Set the block at i_pos to block if the chunk has been generated
     /// TODO: if the chunk has NOT yet been generated, store a "Modified" variant until it is
-    pub fn set(&mut self, block : BlockId, i_pos : InnerChunkPos) {
+    pub fn set(&mut self, block : BlockId, i_pos : InnerCoords) {
         match self {
             ChunkState::Generating => panic!("Can't spawn in chunk yet to be generated!"),
             ChunkState::Generated(g) => g.set(block, i_pos)

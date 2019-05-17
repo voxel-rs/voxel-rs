@@ -1,6 +1,6 @@
 //! `Player`-related data structures.
 use glutin::ElementState;
-use super::chunk::{map::ChunkMap, ChunkPos, InnerChunkPos, ChunkState, WorldPos, SubIndex};
+use super::chunk::{map::ChunkMap, ChunkPos, InnerCoords, ChunkState, WorldPos, SubIndex};
 use super::physics::PhysicsState;
 use crate::block::BlockId;
 use crate::config::Config;
@@ -102,7 +102,7 @@ impl Player {
 
     fn handle_hit(&mut self, _dt: f64, _config: &Config, world: &mut ChunkMap) {
         let p = self.get_pos();
-        let (h, l) : (ChunkPos, InnerChunkPos) = p.factor();
+        let (h, l) : (ChunkPos, InnerCoords) = p.factor();
         world.set(h, l, BlockId::from(0))
     }
 
