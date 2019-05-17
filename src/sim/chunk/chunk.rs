@@ -51,6 +51,20 @@ impl<T: InnerPos> IndexMut<T> for ChunkSimArray {
     }
 }
 
+impl Index<usize> for ChunkSimArray {
+    type Output = [[SimFaces; CHUNK_SIZE]; CHUNK_SIZE];
+
+    fn index(&self, pos : usize) -> &Self::Output {
+        &self.0[pos]
+    }
+}
+
+impl IndexMut<usize> for ChunkSimArray {
+    fn index_mut(&mut self, pos : usize) -> &mut Self::Output {
+        &mut self.0[pos]
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[allow(dead_code)]
 pub enum ChunkData {
