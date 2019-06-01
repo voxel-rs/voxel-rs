@@ -39,18 +39,7 @@ impl World {
         // Stage 0: Bookkeeping
         self.ticks += 1;
 
-        // Stage 1: Mobs and players are updated about other mobs and players
-        //TODO: this
-
-        // Stage 2: Mobs and players make their moves, edit the world.
-        for p in self.players.iter_mut() {
-            p.tick(dt, config, &mut self.chunks, &mut self.physics);
-        }
-
-        // Stage 3: Mobs and players act on each other
-        //TODO:this
-
-        // Stage 4: Active objects affect the physics world by loading and unloading spawn objects
+        // Stage 1: Active objects affect the physics world by loading and unloading spawn objects
         for p in self.players.iter_mut() {
             let chunk_pos = p.get_pos().high();
             if let Some(ChunkState::Generated(chunk)) = self.chunks.get_mut(&chunk_pos) {
@@ -63,6 +52,17 @@ impl World {
             }
         }
 
+        // Stage 2: Mobs and players are updated about other mobs and players
+        //TODO: this
+
+        // Stage 3: Mobs and players make their moves, edit the world.
+        for p in self.players.iter_mut() {
+            p.tick(dt, config, &mut self.chunks, &mut self.physics);
+        }
+
+        // Stage 4: Mobs and players act on each other
+        //TODO:this
+
         // Stage 5: The physics world ticks forwards, affecting all objects in it
         // (including the bodies of mobs and players)
         self.physics.tick(dt);
@@ -72,12 +72,16 @@ impl World {
             p.finalize(config, &mut self.chunks, &mut self.physics);
         }
 
+        // Stage 7: the physics world is purged of active objects
+        self.physics_gc(config);
+
     }
 
     pub fn physics_gc(&mut self, _config : &Config) {
-        //TODO: this
+        self.physics.purge();
     }
 
+    #[allow(dead_code)]
     pub fn chunk_gc(&mut self, _config : &Config) {
         //TODO: this
     }

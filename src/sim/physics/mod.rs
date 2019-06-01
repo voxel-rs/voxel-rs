@@ -17,7 +17,7 @@ lazy_static! {
         ShapeHandle::new(Cuboid::new([32.0, 32.0, 32.0].into()));
     /// The shape of a player: 1 block at the base, 2 blocks tall
     pub static ref PLAYER_SHAPE : ShapeHandle<f64> =
-        ShapeHandle::new(Cuboid::new([1.0, 2.0, 1.0].into()));
+        ShapeHandle::new(Cuboid::new([0.7, 1.8, 0.3].into()));
     /// A collider for the shape of a player
     pub static ref PLAYER_COLLIDER : ColliderDesc<f64> =
         ColliderDesc::new(PLAYER_SHAPE.clone());
@@ -31,10 +31,7 @@ pub struct PhysicsState {
     /// The physics world
     pub world : PhysicsWorld,
     /// A list of active colliders for spawners.
-    /// "Garbage collected" by checking if colliders from other bodies are nearby.
-    /// TODO: think of a way to garbage collect colliders for nearby bodies known not to collide
-    /// with each other, other than maybe a collision group...
-    active : HashSet<ColliderHandle>
+    active : Vec<ColliderHandle>
 }
 
 impl PhysicsState {
@@ -48,7 +45,7 @@ impl PhysicsState {
         ColliderDesc::new(ShapeHandle::new(bx))
             .build(&mut world);
 
-        PhysicsState{ world : world, active : HashSet::new() }
+        PhysicsState{ world : world, active : Vec::new() }
     }
 
     /// Spawn colliders, given a spawner, for a body within an AABB (if they don't already exist)
@@ -59,7 +56,7 @@ impl PhysicsState {
             ref mut world,
             ref mut active
         } = *self;
-        spawner.spawn_aabb(coords, aabb, world, body, |handle| {active.insert(handle);});
+        spawner.spawn_aabb(coords, aabb, world, body, |handle| {active.push(handle);});
     }
 
     /// Spawn colliders, given a spawner, for a body within a sphere (if they don't already exist)
@@ -70,7 +67,7 @@ impl PhysicsState {
             ref mut world,
             ref mut active
         } = *self;
-        spawner.spawn_sphere(coords, sphere, world, body, |handle| {active.insert(handle);});
+        spawner.spawn_sphere(coords, sphere, world, body, |handle| {active.push(handle);});
     }
 
     pub fn tick(&mut self, dt : f64) {
@@ -89,6 +86,11 @@ impl PhysicsState {
             .collider(&PLAYER_COLLIDER)
             .build(&mut self.world)
             .handle()
+    }
+
+    pub fn purge(&mut self) {
+        self.world.remove_colliders(&self.active);
+        self.active.clear();
     }
 
 }
@@ -121,10 +123,10 @@ impl BVSpawner for Chunk {
             for y in min_clamped.y()..max_clamped.y() {
                 for z in min_clamped.z()..max_clamped.z() {
                     let ic = InnerCoords::new(x, y, z).unwrap();
-                    if !self.is_simulated(ic) && *self.get(ic) != BlockId::from(0) {
+                    if /* !self.is_simulated(ic) &&*/ *self.get(ic) != BlockId::from(0) {
                         // Spawn a block at the appropriate position
-                        println!("Spawning collider for block @ {:?}", ic);
-                        self.set_simulated(ic, true);
+                        //println!("Spawning collider for block @ {:?}", ic);
+                        //self.set_simulated(ic, true);
                         let mut pos = coords.edge();
                         pos += Vector3::from([x as f64 + 0.5, y as f64 + 0.5, z as f64 + 0.5]);
                         let collider = ColliderDesc::new(BLOCK_SHAPE.clone())
