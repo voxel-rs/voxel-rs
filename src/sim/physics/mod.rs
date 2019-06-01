@@ -1,4 +1,5 @@
-use crate::sim::chunk::{Chunk, ChunkPos};
+use crate::sim::chunk::{Chunk, ChunkPos, WorldPos, BlockPos, SubIndex, InnerPos, InnerCoords};
+use crate::block::BlockId;
 use crate::sim::player::Player;
 
 use hashbrown::hash_set::HashSet;
@@ -22,7 +23,7 @@ lazy_static! {
         ColliderDesc::new(PLAYER_SHAPE.clone());
     /// The shape of a block: 1 x 1 x 1 meters
     pub static ref BLOCK_SHAPE : ShapeHandle<f64> =
-        ShapeHandle::new(Cuboid::new([1.0, 1.0, 1.0].into()));
+        ShapeHandle::new(Cuboid::new([1.05, 1.05, 1.05].into()));
 }
 
 /// The state of physics in the simulation
@@ -53,7 +54,7 @@ impl PhysicsState {
     /// Spawn colliders, given a spawner, for a body within an AABB (if they don't already exist)
     #[allow(dead_code)]
     pub fn spawn_aabb_for<T : BVSpawner>(&mut self,
-        aabb : AABB<f64>, body : BodyPartHandle, coords : T::BVCoords, spawner : &T) {
+        aabb : AABB<f64>, body : BodyPartHandle, coords : T::BVCoords, spawner : &mut T) {
         let PhysicsState {
             ref mut world,
             ref mut active
@@ -64,7 +65,7 @@ impl PhysicsState {
     /// Spawn colliders, given a spawner, for a body within a sphere (if they don't already exist)
     #[allow(dead_code)]
     pub fn spawn_sphere_for<T : BVSpawner>(&mut self,
-        sphere : BoundingSphere<f64>, body : BodyPartHandle, coords : T::BVCoords, spawner : &T) {
+        sphere : BoundingSphere<f64>, body : BodyPartHandle, coords : T::BVCoords, spawner : &mut T) {
         let PhysicsState {
             ref mut world,
             ref mut active
@@ -98,32 +99,48 @@ pub trait BVSpawner {
     type BVCoords;
 
     /// Spawn colliders for a body within an AABB if they don't already exist
-    fn spawn_aabb<F : FnMut(ColliderHandle)>(&self, coords : Self::BVCoords,
+    fn spawn_aabb<F : FnMut(ColliderHandle)>(&mut self, coords : Self::BVCoords,
         aabb : AABB<f64>, world : &mut PhysicsWorld, body : BodyPartHandle, desc : F);
     /// Spawn colliders for a body within a sphere if they don't already exist
-    fn spawn_sphere<F : FnMut(ColliderHandle)>(&self, coords : Self::BVCoords,
+    fn spawn_sphere<F : FnMut(ColliderHandle)>(&mut self, coords : Self::BVCoords,
         sphere : BoundingSphere<f64>, world : &mut PhysicsWorld, body : BodyPartHandle, desc : F);
 }
 
 impl BVSpawner for Chunk {
     type BVCoords = ChunkPos;
 
-    fn spawn_aabb<F : FnMut(ColliderHandle)>(&self, coords : Self::BVCoords,
-        _aabb : AABB<f64>, world : &mut PhysicsWorld, body : BodyPartHandle, mut desc : F) {
-        //TODO: this (current implementation just a test)
-        if self.is_empty() {
-            return;
+    fn spawn_aabb<F : FnMut(ColliderHandle)>(&mut self, coords : Self::BVCoords,
+        aabb : AABB<f64>, world : &mut PhysicsWorld, body : BodyPartHandle, mut desc : F) {
+        let mins : WorldPos = (aabb.mins().coords - coords.edge()).into();
+        let maxs : WorldPos = (aabb.maxs().coords - coords.edge()).into();
+        let min_blocks : BlockPos = mins.high();
+        let max_blocks : BlockPos = maxs.high();
+        let min_clamped = min_blocks.clamp();
+        let max_clamped = max_blocks.clamp();
+        for x in min_clamped.x()..max_clamped.x() {
+            for y in min_clamped.y()..max_clamped.y() {
+                for z in min_clamped.z()..max_clamped.z() {
+                    let ic = InnerCoords::new(x, y, z).unwrap();
+                    if !self.is_simulated(ic) && *self.get(ic) != BlockId::from(0) {
+                        // Spawn a block at the appropriate position
+                        println!("Spawning collider for block @ {:?}", ic);
+                        self.set_simulated(ic, true);
+                        let mut pos = coords.edge();
+                        pos += Vector3::from([x as f64 + 0.5, y as f64 + 0.5, z as f64 + 0.5]);
+                        let collider = ColliderDesc::new(BLOCK_SHAPE.clone())
+                            .translation(pos)
+                            .build_with_parent(body, world)
+                            .expect("Could not find body part")
+                            .handle();
+                        desc(collider);
+                    } else {
+                        //println!("Skipping collider for block @ {:?}", ic);
+                    }
+                }
+            }
         }
-        // Check if something is inside the desired collider:
-        
-        let collider = ColliderDesc::new(CHUNK_SHAPE.clone())
-            .translation(coords.center())
-            .build_with_parent(body, world)
-            .expect("Could not find body part")
-            .handle();
-        desc(collider);
     }
-    fn spawn_sphere<F : FnMut(ColliderHandle)>(&self, coords : Self::BVCoords,
+    fn spawn_sphere<F : FnMut(ColliderHandle)>(&mut self, coords : Self::BVCoords,
         _ : BoundingSphere<f64>, world : &mut PhysicsWorld, body : BodyPartHandle, mut desc : F) {
         //TODO: this
         if self.is_empty() {

@@ -214,9 +214,21 @@ impl Chunk {
         self.version += 1;
     }
     /// Get the block at i_pos
-    #[allow(dead_code)]
     pub fn get<T : InnerPos>(&self, pos : T) -> &BlockData {
         &self.blocks[pos.x()][pos.y()][pos.z()]
+    }
+    pub fn is_simulated<T : InnerPos>(&self, pos : T) -> bool {
+        self.sides[pos].contains(SimFace::This)
+    }
+    pub fn set_simulated<T : InnerPos>(&mut self, pos : T, new : bool) -> bool {
+        let val = &mut self.sides[pos];
+        let prev = val.contains(SimFace::This);
+        if new {
+            *val |= SimFace::This;
+        } else {
+            *val &= !SimFace::This;
+        }
+        prev
     }
     /// Check whether this chunk is empty
     pub fn is_empty(&self) -> bool {

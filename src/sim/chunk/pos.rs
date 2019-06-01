@@ -10,6 +10,7 @@ use derive_more::{
 use serde_derive::{Deserialize, Serialize};
 use num::Integer;
 use nalgebra::Vector3;
+use std::cmp::{max, min};
 
 pub trait SubIndex<T> {
     type Remainder;
@@ -76,6 +77,16 @@ impl SubIndex<ChunkPos> for WorldPos {
 )]
 pub struct BlockPos{
     pub x : i64, pub y : i64, pub z : i64
+}
+
+impl BlockPos {
+    pub fn clamp(self) -> InnerCoords {
+        InnerCoords::new(
+            min(max(self.x, 0) as usize, CHUNK_SIZE - 1),
+            min(max(self.y, 0) as usize, CHUNK_SIZE - 1),
+            min(max(self.z, 0) as usize, CHUNK_SIZE - 1)
+        ).unwrap()
+    }
 }
 
 impl From<[i64; 3]> for BlockPos {
@@ -154,8 +165,10 @@ impl ChunkPos {
         maxcoord as u64
     }
     pub fn center(self) -> Vector3<f64> {
+        self.edge() + Vector3::from([16.0, 16.0, 16.0])
+    }
+    pub fn edge(self) -> Vector3<f64> {
         Vector3::from([self.x as f64 * 32.0, self.y as f64 * 32.0, self.z as f64 * 32.0])
-        + Vector3::from([16.0, 16.0, 16.0])
     }
     /*
     pub fn get_adjacent(self) -> [ChunkPos; 6] {

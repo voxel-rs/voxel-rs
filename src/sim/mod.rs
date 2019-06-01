@@ -53,9 +53,9 @@ impl World {
         // Stage 4: Active objects affect the physics world by loading and unloading spawn objects
         for p in self.players.iter_mut() {
             let chunk_pos = p.get_pos().high();
-            if let Some(ChunkState::Generated(chunk)) = self.chunks.get(&chunk_pos) {
+            if let Some(ChunkState::Generated(chunk)) = self.chunks.get_mut(&chunk_pos) {
                 self.physics.spawn_aabb_for(
-                    p.get_aabb_around(2.0),
+                    p.get_aabb_around(4.0),
                     BodyPartHandle::ground(),
                     chunk_pos,
                     chunk
