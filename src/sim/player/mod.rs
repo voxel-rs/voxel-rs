@@ -11,6 +11,8 @@ use enumset::{EnumSet, EnumSetType};
 use nphysics3d::object::BodyHandle;
 use nphysics3d::math::{Velocity, Isometry};
 
+use ncollide3d::bounding_volume::aabb::AABB;
+
 mod player_set;
 pub use player_set::PlayerSet;
 pub use player_set::PlayerId;
@@ -98,6 +100,10 @@ impl Player {
             physics : false,
             body : None
         }
+    }
+
+    pub fn get_aabb_around(&self, rad : f64) -> AABB<f64> {
+        AABB::from_half_extents(self.pos.into(), [rad, rad, rad].into())
     }
 
     fn handle_hit(&mut self, _dt: f64, _config: &Config, world: &mut ChunkMap) {
