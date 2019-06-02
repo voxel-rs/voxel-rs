@@ -94,12 +94,22 @@ pub trait BVSpawner {
 impl BVSpawner for Chunk {
     type BVCoords = ChunkPos;
 
-    fn spawn_aabb<F : FnMut(ColliderHandle)>(&mut self, coords : Self::BVCoords,
-        aabb : AABB<f64>, world : &mut PhysicsWorld, body : BodyPartHandle, mut desc : F) {
-        let mins : WorldPos = (aabb.mins().coords - coords.edge()).into();
-        let maxs : WorldPos = (aabb.maxs().coords - coords.edge()).into();
-        let min_blocks : BlockPos = mins.high();
-        let max_blocks : BlockPos = maxs.high();
+    fn spawn_aabb<F : FnMut(ColliderHandle)>(&mut self,
+            coords : Self::BVCoords,
+            aabb : AABB<f64>,
+            world : &mut PhysicsWorld,
+            body : BodyPartHandle,
+            mut desc : F) {
+        let mut mins = aabb.mins().coords - coords.edge();
+        mins[0] = mins[0].floor();
+        mins[1] = mins[1].floor();
+        mins[2] = mins[2].floor();
+        let mut maxs = aabb.maxs().coords - coords.edge();
+        maxs[0] = maxs[0].ceil();
+        maxs[1] = maxs[1].ceil();
+        maxs[2] = maxs[2].ceil();
+        let min_blocks : BlockPos = WorldPos::from(mins).high();
+        let max_blocks : BlockPos = WorldPos::from(maxs).high();
         let min_clamped = min_blocks.clamp();
         let max_clamped = max_blocks.clamp();
         for x in min_clamped.x()..max_clamped.x() {
