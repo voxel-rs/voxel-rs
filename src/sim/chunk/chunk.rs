@@ -16,6 +16,18 @@ pub enum SimFace {
     This = 6
 }
 
+impl SimFace {
+    #[inline]
+    pub fn faces() -> SimFaces {
+        let mut result = SimFaces::empty();
+        for face in Faces::all() {
+            let sim_face : SimFace = face.into();
+            result |= sim_face;
+        }
+        result
+    }
+}
+
 impl From<Face> for SimFace {
     fn from(face : Face) -> SimFace {
         match face {
@@ -173,10 +185,12 @@ impl Chunk {
         &self.sides
     }
     /// What version is this chunk (version 0 is freshly generated)
+    #[inline]
     pub fn get_version(&self) -> u64 {
         self.version
     }
     /// Was this chunk modified since it was generated
+    #[inline]
     pub fn is_modified(&self) -> bool {
         self.get_version() != 0
     }
@@ -213,13 +227,30 @@ impl Chunk {
         self.blocks[pos.x()][pos.y()][pos.z()] = block;
         self.version += 1;
     }
+
     /// Get the block at i_pos
+    #[inline]
     pub fn get<T : InnerPos>(&self, pos : T) -> &BlockData {
         &self.blocks[pos.x()][pos.y()][pos.z()]
     }
+
+    #[allow(dead_code)]
     pub fn is_simulated<T : InnerPos>(&self, pos : T) -> bool {
         self.sides[pos].contains(SimFace::This)
     }
+
+    #[inline]
+    pub fn is_covered<T : InnerPos>(&self, pos : T) -> bool {
+        (self.sides[pos] & SimFace::faces()).is_empty()
+    }
+
+    #[inline]
+    pub fn has_collider<T : InnerPos>(&self, pos : T) -> bool {
+        let pos : InnerCoords = pos.to_coords();
+        !self.is_covered(pos) && *self.get(pos) != BlockId::from(0)
+    }
+
+    #[allow(dead_code)]
     pub fn set_simulated<T : InnerPos>(&mut self, pos : T, new : bool) -> bool {
         let val = &mut self.sides[pos];
         let prev = val.contains(SimFace::This);
@@ -230,6 +261,7 @@ impl Chunk {
         }
         prev
     }
+
     /// Check whether this chunk is empty
     pub fn is_empty(&self) -> bool {
         for slice in self.blocks.iter() {

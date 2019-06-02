@@ -1,8 +1,5 @@
 use crate::sim::chunk::{Chunk, ChunkPos, WorldPos, BlockPos, SubIndex, InnerPos, InnerCoords};
-use crate::block::BlockId;
 use crate::sim::player::Player;
-
-use hashbrown::hash_set::HashSet;
 
 pub type PhysicsWorld = nphysics3d::world::World<f64>;
 use nphysics3d::object::{ColliderHandle, BodyHandle, BodyPartHandle, RigidBodyDesc, ColliderDesc};
@@ -123,7 +120,7 @@ impl BVSpawner for Chunk {
             for y in min_clamped.y()..max_clamped.y() {
                 for z in min_clamped.z()..max_clamped.z() {
                     let ic = InnerCoords::new(x, y, z).unwrap();
-                    if /* !self.is_simulated(ic) &&*/ *self.get(ic) != BlockId::from(0) {
+                    if self.has_collider(ic) {
                         // Spawn a block at the appropriate position
                         //println!("Spawning collider for block @ {:?}", ic);
                         //self.set_simulated(ic, true);

@@ -120,10 +120,11 @@ impl Player {
         let mut speedup = 1.0;
         if self.keys.contains(PlayerKey::Control) {
             speedup = config.ctrl_speedup;
+            if self.physics {println!("Physics off!");}
             self.physics = false;
         }
         if self.keys.contains(PlayerKey::PhysicsEnable) {
-            println!("Physics on!");
+            if !self.physics {println!("Physics on!");}
             self.physics = true;
             if let Some(body) = self.body {
                 physics.world.rigid_body_mut(body)
