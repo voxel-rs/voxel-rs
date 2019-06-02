@@ -171,21 +171,6 @@ impl ChunkPos {
     pub fn edge(self) -> Vector3<f64> {
         Vector3::from([self.x as f64 * 32.0, self.y as f64 * 32.0, self.z as f64 * 32.0])
     }
-    /*
-    pub fn get_adjacent(self) -> [ChunkPos; 6] {
-        let x = self.0[0];
-        let y = self.0[1];
-        let z = self.0[2];
-        [
-            ChunkPos([x + 1, y, z]),
-            ChunkPos([x, y + 1, z]),
-            ChunkPos([x, y, z + 1]),
-            ChunkPos([x - 1, y, z]),
-            ChunkPos([x, y - 1, z]),
-            ChunkPos([x, y, z - 1])
-        ]
-    }
-    */
 }
 
 
