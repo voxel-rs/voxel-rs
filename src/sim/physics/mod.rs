@@ -5,7 +5,7 @@ pub type PhysicsWorld = nphysics3d::world::World<f64>;
 use nphysics3d::object::{ColliderHandle, BodyHandle, BodyPartHandle, RigidBodyDesc, ColliderDesc};
 use nphysics3d::math::Velocity;
 use ncollide3d::shape::{ShapeHandle, Cuboid};
-use ncollide3d::bounding_volume::{AABB, BoundingSphere};
+use ncollide3d::bounding_volume::AABB;
 use nalgebra::Vector3;
 
 lazy_static! {
@@ -56,17 +56,6 @@ impl PhysicsState {
         spawner.spawn_aabb(coords, aabb, world, body, |handle| {active.push(handle);});
     }
 
-    /// Spawn colliders, given a spawner, for a body within a sphere (if they don't already exist)
-    #[allow(dead_code)]
-    pub fn spawn_sphere_for<T : BVSpawner>(&mut self,
-        sphere : BoundingSphere<f64>, body : BodyPartHandle, coords : T::BVCoords, spawner : &mut T) {
-        let PhysicsState {
-            ref mut world,
-            ref mut active
-        } = *self;
-        spawner.spawn_sphere(coords, sphere, world, body, |handle| {active.push(handle);});
-    }
-
     pub fn tick(&mut self, dt : f64) {
         self.world.set_timestep(dt);
         self.world.step();
@@ -100,9 +89,6 @@ pub trait BVSpawner {
     /// Spawn colliders for a body within an AABB if they don't already exist
     fn spawn_aabb<F : FnMut(ColliderHandle)>(&mut self, coords : Self::BVCoords,
         aabb : AABB<f64>, world : &mut PhysicsWorld, body : BodyPartHandle, desc : F);
-    /// Spawn colliders for a body within a sphere if they don't already exist
-    fn spawn_sphere<F : FnMut(ColliderHandle)>(&mut self, coords : Self::BVCoords,
-        sphere : BoundingSphere<f64>, world : &mut PhysicsWorld, body : BodyPartHandle, desc : F);
 }
 
 impl BVSpawner for Chunk {
@@ -138,18 +124,5 @@ impl BVSpawner for Chunk {
                 }
             }
         }
-    }
-    fn spawn_sphere<F : FnMut(ColliderHandle)>(&mut self, coords : Self::BVCoords,
-        _ : BoundingSphere<f64>, world : &mut PhysicsWorld, body : BodyPartHandle, mut desc : F) {
-        //TODO: this
-        if self.is_empty() {
-            return;
-        }
-        let collider = ColliderDesc::new(CHUNK_SHAPE.clone())
-            .translation(coords.center())
-            .build_with_parent(body, world)
-            .expect("Could not find body part")
-            .handle();
-        desc(collider);
     }
 }

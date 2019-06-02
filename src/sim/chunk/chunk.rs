@@ -263,6 +263,7 @@ impl Chunk {
     }
 
     /// Check whether this chunk is empty
+    #[allow(dead_code)]
     pub fn is_empty(&self) -> bool {
         for slice in self.blocks.iter() {
             for line in slice {

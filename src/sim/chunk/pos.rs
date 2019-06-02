@@ -164,6 +164,7 @@ impl ChunkPos {
         }
         maxcoord as u64
     }
+    #[allow(dead_code)]
     pub fn center(self) -> Vector3<f64> {
         self.edge() + Vector3::from([16.0, 16.0, 16.0])
     }
