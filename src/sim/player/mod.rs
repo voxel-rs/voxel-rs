@@ -103,7 +103,7 @@ impl Player {
     }
 
     pub fn get_aabb_around(&self, rad : f64) -> AABB<f64> {
-        AABB::from_half_extents(self.pos.into(), [rad, rad, rad].into())
+        AABB::from_half_extents(self.pos.into(), [rad, rad * 2.0, rad].into())
     }
 
     fn handle_hit(&mut self, _dt: f64, _config: &Config, world: &mut ChunkMap) {

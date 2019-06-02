@@ -1,4 +1,7 @@
-use crate::sim::chunk::{Chunk, ChunkPos, WorldPos, BlockPos, SubIndex, InnerPos, InnerCoords};
+use crate::sim::chunk::{
+        Chunk, ChunkPos, WorldPos, BlockPos, SubIndex, InnerPos, InnerCoords, map::ChunkMap,
+        ChunkState
+};
 use crate::sim::player::Player;
 
 pub type PhysicsWorld = nphysics3d::world::World<f64>;
@@ -11,16 +14,16 @@ use nalgebra::Vector3;
 lazy_static! {
     /// The shape of a chunk: 32 x 32 x 32 meters
     pub static ref CHUNK_SHAPE : ShapeHandle<f64> =
-        ShapeHandle::new(Cuboid::new([32.0, 32.0, 32.0].into()));
+        ShapeHandle::new(Cuboid::new([16.0, 16.0, 16.0].into()));
     /// The shape of a player: 1 block at the base, 2 blocks tall
     pub static ref PLAYER_SHAPE : ShapeHandle<f64> =
-        ShapeHandle::new(Cuboid::new([0.7, 1.8, 0.3].into()));
+        ShapeHandle::new(Cuboid::new([0.35, 0.9, 0.35].into()));
     /// A collider for the shape of a player
     pub static ref PLAYER_COLLIDER : ColliderDesc<f64> =
         ColliderDesc::new(PLAYER_SHAPE.clone());
     /// The shape of a block: 1 x 1 x 1 meters
     pub static ref BLOCK_SHAPE : ShapeHandle<f64> =
-        ShapeHandle::new(Cuboid::new([1.05, 1.05, 1.05].into()));
+        ShapeHandle::new(Cuboid::new([0.51, 0.51, 0.51].into()));
 }
 
 /// The state of physics in the simulation
@@ -112,16 +115,17 @@ impl BVSpawner for Chunk {
         let max_blocks : BlockPos = WorldPos::from(maxs).high();
         let min_clamped = min_blocks.clamp();
         let max_clamped = max_blocks.clamp();
-        for x in min_clamped.x()..max_clamped.x() {
-            for y in min_clamped.y()..max_clamped.y() {
-                for z in min_clamped.z()..max_clamped.z() {
+        for x in min_clamped.x()..=max_clamped.x() {
+            for y in min_clamped.y()..=max_clamped.y() {
+                for z in min_clamped.z()..=max_clamped.z() {
                     let ic = InnerCoords::new(x, y, z).unwrap();
                     if self.has_collider(ic) {
                         // Spawn a block at the appropriate position
                         //println!("Spawning collider for block @ {:?}", ic);
                         //self.set_simulated(ic, true);
                         let mut pos = coords.edge();
-                        pos += Vector3::from([x as f64 + 0.5, y as f64 + 0.5, z as f64 + 0.5]);
+                        pos += Vector3::new(x as f64, y as f64, z as f64);
+                        pos += Vector3::new(0.5, 0.5, 0.5);
                         let collider = ColliderDesc::new(BLOCK_SHAPE.clone())
                             .translation(pos)
                             .build_with_parent(body, world)
@@ -130,6 +134,30 @@ impl BVSpawner for Chunk {
                         desc(collider);
                     } else {
                         //println!("Skipping collider for block @ {:?}", ic);
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl BVSpawner for ChunkMap {
+    type BVCoords = ();
+
+    fn spawn_aabb<F : FnMut(ColliderHandle)>(&mut self,
+            _ : Self::BVCoords,
+            aabb : AABB<f64>,
+            world : &mut PhysicsWorld,
+            body : BodyPartHandle,
+            mut desc : F) {
+        let min_chunk : ChunkPos = WorldPos::from(aabb.mins().coords).high();
+        let max_chunk : ChunkPos = WorldPos::from(aabb.maxs().coords).high();
+        for x in min_chunk.x..=max_chunk.x {
+            for y in min_chunk.y..=max_chunk.y {
+                for z in min_chunk.z..=max_chunk.z {
+                    let coords = ChunkPos::new(x, y, z);
+                    if let Some(ChunkState::Generated(chunk)) = self.get_mut(&coords) {
+                        chunk.spawn_aabb(coords, aabb.clone(), world, body, &mut desc)
                     }
                 }
             }

@@ -157,6 +157,9 @@ pub struct ChunkPos {
 }
 
 impl ChunkPos {
+    pub fn new(x : i64, y : i64, z : i64) -> ChunkPos {
+        ChunkPos { x : x, y : y, z : z }
+    }
     pub fn orthogonal_dist(self, other: ChunkPos) -> u64 {
         let mut maxcoord = 0;
         for i in 0..3 {
