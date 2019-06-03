@@ -1,6 +1,34 @@
-//! A few other helpers.
-
 use ::std::time::{Duration, Instant};
+use enumset::{EnumSet, EnumSetType};
+
+#[derive(Debug, EnumSetType)]
+#[enumset(serialize_repr = "u8")]
+pub enum Face {
+    Back = 0,
+    Front = 1,
+    Right = 2,
+    Left = 3,
+    Top = 4,
+    Bottom = 5,
+}
+
+impl Face {
+    pub fn flip(self) -> Face {
+        match (self as u8) ^ 1 {
+            0 => Face::Back,
+            1 => Face::Front,
+            2 => Face::Right,
+            3 => Face::Left,
+            4 => Face::Top,
+            5 => Face::Bottom,
+            _ => unreachable!()
+        }
+    }
+}
+
+pub type Faces = EnumSet<Face>;
+
+pub mod lazy_container;
 
 pub struct Ticker {
     tick_duration: Duration,

@@ -4,6 +4,7 @@
 //! The `game` submodule is reponsible for chunk handling, rendering and meshing.
 //! The `input` submodule manages interactions between the player, this thread, and the other client side threads.
 
+use glutin::ElementState;
 use std;
 use std::cell::RefCell;
 use std::collections::{HashMap, VecDeque};
@@ -19,12 +20,16 @@ use gfx::Factory;
 use glutin::MouseCursor;
 
 use crate::block::{
-    create_block_air, create_block_cube, BlockRegistry, Chunk, ChunkInfo, ChunkPos, ChunkSidesArray,
+    create_block_air, create_block_cube, BlockRegistry
 };
+use crate::sim::chunk::{
+    ChunkPos
+};
+use self::chunk::{Chunk, ChunkData, ChunkState};
 use crate::config::{load_config, Config};
 use crate::core::messages::client::{ToInput, ToMeshing, ToNetwork};
 use crate::input::KeyboardState;
-use crate::player::PlayerInput;
+use crate::sim::player::PlayerInput;
 use crate::render::camera::*;
 use crate::render::frames::FrameCounter;
 use crate::texture::load_textures;
@@ -34,6 +39,7 @@ use crate::{pipe, ColorFormat, DepthFormat, PlayerData, Transform, Vertex, CHUNK
 
 mod game;
 mod input;
+pub mod chunk;
 
 type PipeDataType = pipe::Data<gfx_device_gl::Resources>;
 type PsoType = gfx::PipelineState<gfx_device_gl::Resources, pipe::Meta>;
@@ -106,6 +112,7 @@ struct InputState {
     pub keyboard_state: KeyboardState,
     pub camera: Camera,
     pub timer: Instant,
+    pub mouse_state : ElementState
 }
 
 /// Game-related state
@@ -138,28 +145,6 @@ type BufferHandle3D = (
     gfx::handle::Buffer<gfx_device_gl::Resources, Vertex>,
     gfx::Slice<gfx_device_gl::Resources>,
 );
-
-/// Chunk information stored by the client
-struct ChunkData {
-    /// The chunk data itself
-    pub chunk: Chunk,
-    /// How many fragments have been received
-    pub fragments: usize,
-    /// What adjacent chunks are loaded. This is a bit mask, and 1 means loaded.
-    /// All chunks loaded means that adj_chunks == 0b00111111
-    pub adj_chunks: u8,
-    /// The loaded bits
-    pub chunk_info: ChunkInfo,
-    /// The chunk's state
-    pub state: ChunkState,
-}
-
-/// A client chunk's state
-enum ChunkState {
-    Unmeshed,
-    Meshing,
-    Meshed(BufferHandle3D),
-}
 
 impl std::fmt::Debug for ChunkState {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -239,13 +224,13 @@ impl InputImpl {
         let coal = create_block_cube(["ore_coal"; 6], &texture_registry);
 
         let mut br = BlockRegistry::new();
-        br.add_block(Box::new(air));
-        br.add_block(Box::new(dirt));
-        br.add_block(Box::new(grass));
-        br.add_block(Box::new(wood));
-        br.add_block(Box::new(leaves));
-        br.add_block(Box::new(stone));
-        br.add_block(Box::new(coal));
+        br.add_block(air.into());
+        br.add_block(dirt.into());
+        br.add_block(grass.into());
+        br.add_block(wood.into());
+        br.add_block(leaves.into());
+        br.add_block(stone.into());
+        br.add_block(coal.into());
 
         let br = Arc::new(br);
 
@@ -298,7 +283,7 @@ impl InputImpl {
                 });
 
                 thread::spawn(move || {
-                    crate::server::worldgen::start(worldgen_rx, game_tx);
+                    crate::sim::worldgen::start(worldgen_rx, game_tx);
                 });
             }
 
@@ -353,6 +338,7 @@ impl InputImpl {
                 keyboard_state: KeyboardState::new(),
                 camera: cam,
                 timer: Instant::now(),
+                mouse_state: ElementState::Released
             },
             game_state: ClientGameState {
                 chunks: HashMap::new(),

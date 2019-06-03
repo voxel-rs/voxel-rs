@@ -1,4 +1,8 @@
 use super::*;
+use crate::block::Block;
+use crate::sim::chunk::SubIndex;
+use crate::util::{Face, Faces};
+
 
 use gfx::Device;
 use nalgebra::{convert, Matrix4, Vector3};
@@ -8,15 +12,36 @@ impl InputImpl {
     pub fn process_chunk_messages(&mut self) {
         for message in self.pending_messages.drain(..) {
             match message {
-                ToInput::NewChunkFragment(pos, fpos, frag) => {
+                ToInput::NewChunkFragment(pos, fpos, frag, version) => {
                     if let Some(data) = self.game_state.chunks.get(&pos) {
-                        let mut data = &mut *data.borrow_mut();
-                        let index = fpos.0[0] * 32 + fpos.0[1];
+                        let data = &mut *data.borrow_mut();
+                        let index = fpos[0] * 32 + fpos[1];
                         // New fragment
-                        if data.chunk_info[index / 32] & (1 << (index % 32)) == 0 {
+                        let not_loaded = data.chunk_info[index / 32] & (1 << (index % 32)) == 0;
+
+                        let modified = data.current != version;
+
+                        if data.latest < version {
+                            data.latest = version;
+                            data.latest_fragments = 0;
+                        }
+
+                        // If the chunk has been modified, mark it as hot
+                        data.hot |= modified;
+
+                        if not_loaded || modified {
                             data.chunk_info[index / 32] |= 1 << (index % 32);
-                            data.chunk.blocks[fpos.0[0]][fpos.0[1]] = *frag;
-                            data.fragments += 1;
+                            data.chunk.blocks[fpos[0]][fpos[1]] = *frag;
+
+                            // If a new fragment is being loaded in, increment that count
+                            if not_loaded {data.fragments += 1;}
+                            if modified {data.latest_fragments += 1;}
+
+                            // If all fragments loaded in have been updated to the latest version, make it the current
+                            if data.latest_fragments == data.fragments {
+                                data.current = data.latest;
+                            }
+
                             // TODO: check that the chunk is in render_distance but NOT in (render_distance; rander_distance+1]
                             // Update adjacent chunks too
                             Self::check_finalize_chunk(
@@ -24,14 +49,16 @@ impl InputImpl {
                                 data,
                                 &self.game_state.chunks,
                                 &self.game_registries.block_registry,
+                                modified
                             );
                         }
                     }
                 }
-                ToInput::NewChunkInfo(pos, info) => {
+                ToInput::NewChunkInfo(pos, info, _) => {
                     if let Some(data) = self.game_state.chunks.get(&pos) {
                         let mut data = &mut *data.borrow_mut();
-                        for (from, to) in info.iter().zip(data.chunk_info.iter_mut()) {
+                        for (_, (from, to)) in info.iter().zip(data.chunk_info.iter_mut()).enumerate( ) {
+                            //TODO: fix bug with zeroed fragments...
                             data.fragments -= to.count_ones() as usize;
                             *to |= *from;
                             data.fragments += to.count_ones() as usize;
@@ -42,6 +69,7 @@ impl InputImpl {
                             data,
                             &self.game_state.chunks,
                             &self.game_registries.block_registry,
+                            false //TODO
                         );
                     }
                 }
@@ -56,25 +84,27 @@ impl InputImpl {
         data: &mut ChunkData,
         chunks: &HashMap<ChunkPos, RefCell<ChunkData>>,
         br: &BlockRegistry,
+        modified : bool
     ) {
         if data.fragments == CHUNK_SIZE * CHUNK_SIZE {
-            for face in 0..6 {
-                let adj = ADJ_CHUNKS[face];
+            for face in Faces::all().iter() {
+                let adj = ADJ_CHUNKS[face as usize];
                 let mut pos = pos;
                 for i in 0..3 {
-                    pos.0[i] += adj[i];
+                    pos[i] += adj[i];
                 }
                 if let Some(c) = chunks.get(&pos) {
                     let mut adj_chunk = c.borrow_mut();
-                    if adj_chunk.adj_chunks & (1 << face) == 0 {
-                        adj_chunk.adj_chunks |= 1 << face;
+                    if modified || (adj_chunk.adj_chunks & face).is_empty() {
+                        adj_chunk.adj_chunks |= face;
                         // We update that adjacent chunk's sides with the current chunk !
                         Self::update_side(
                             // It should be the opposite face from the adjacent chunk's POV, so we XOR 1 to flip the last bit
-                            face ^ 1,
-                            &data.chunk,
-                            &mut adj_chunk.chunk.sides,
+                            face.flip(),
+                            &data,
+                            &mut adj_chunk,
                             br,
+                            modified
                         );
                     }
                 } else {
@@ -86,7 +116,7 @@ impl InputImpl {
 
     /// Add close chunks to the HashMap, drop far chunks, mesh ready chunks
     pub fn fetch_close_chunks(&mut self) {
-        let player_chunk = self.input_state.camera.get_pos().chunk_pos();
+        let player_chunk : ChunkPos = self.input_state.camera.get_pos().high();
 
         // Fetch new close chunks
         // render_distance+2 because we need to store information about the adjacent chunks
@@ -96,9 +126,9 @@ impl InputImpl {
         for i in -render_dist..(render_dist + 1) {
             for j in -render_dist..(render_dist + 1) {
                 for k in -render_dist..(render_dist + 1) {
-                    let mut pos = ChunkPos([i, j, k]);
+                    let mut pos : ChunkPos = [i, j, k].into();
                     for x in 0..3 {
-                        pos.0[x] += player_chunk.0[x];
+                        pos[x] += player_chunk[x];
                     }
                     self.game_state
                         .chunks
@@ -107,9 +137,13 @@ impl InputImpl {
                             RefCell::new(ChunkData {
                                 chunk: Chunk::new(),
                                 fragments: 0,
-                                adj_chunks: 0,
+                                latest : 0,
+                                latest_fragments : 0,
+                                current : 0,
+                                adj_chunks: Faces::empty(),
                                 chunk_info: [0; CHUNK_SIZE * CHUNK_SIZE / 32],
                                 state: ChunkState::Unmeshed,
+                                hot: false
                             })
                         });
                 }
@@ -126,13 +160,16 @@ impl InputImpl {
         for (pos, chunk) in self.game_state.chunks.iter() {
             let mut c = chunk.borrow_mut();
             // TODO: FRAGMENT_COUNT const
-            if c.adj_chunks == 0b00111111 && c.fragments == CHUNK_SIZE * CHUNK_SIZE {
+            if c.adj_chunks == Faces::all() && c.fragments == CHUNK_SIZE * CHUNK_SIZE {
                 let mut update_state = false;
                 if let ChunkState::Unmeshed = c.state {
                     update_state = true;
+                }
+                if update_state || c.hot {
                     self.meshing_tx
                         .send(ToMeshing::ComputeChunkMesh(*pos, c.chunk.clone()))
                         .unwrap();
+                    c.hot = false; // Cool off
                 }
                 if update_state {
                     c.state = ChunkState::Meshing;
@@ -165,8 +202,12 @@ impl InputImpl {
     }
 
     /// Update side [face] in the [sides] of some chunk with its adjacent chunk [c].
-    fn update_side(face: usize, c: &Chunk, sides: &mut ChunkSidesArray, br: &BlockRegistry) {
-        let adj = ADJ_CHUNKS[face];
+    fn update_side(face: Face, cd: &ChunkData, a: &mut ChunkData, br: &BlockRegistry, modified : bool) {
+        let adj = ADJ_CHUNKS[face as usize];
+
+        let c = &cd.chunk;
+        let sides = &mut a.chunk.sides;
+
         for (int_x, ext_x) in Self::get_range(adj[0], true).zip(Self::get_range(adj[0], false)) {
             for (int_y, ext_y) in Self::get_range(adj[1], true).zip(Self::get_range(adj[1], false))
             {
@@ -174,7 +215,8 @@ impl InputImpl {
                     Self::get_range(adj[2], true).zip(Self::get_range(adj[2], false))
                 {
                     if !br.get_block(c.blocks[ext_x][ext_y][ext_z]).is_opaque() {
-                        sides[int_x][int_y][int_z] |= 1 << face;
+                        sides[int_x][int_y][int_z] |= face;
+                        a.hot |= modified; // Needs a re-rendering
                     }
                 }
             }
@@ -213,7 +255,7 @@ impl InputImpl {
             if let ChunkState::Meshed(ref mut buff) = chunk.borrow_mut().state {
                 transform.model = Matrix4::new_translation(
                     &((CHUNK_SIZE as f32)
-                        * &Vector3::<f32>::new(pos.0[0] as f32, pos.0[1] as f32, pos.0[2] as f32)),
+                        * &Vector3::<f32>::new(pos[0] as f32, pos[1] as f32, pos[2] as f32)),
                 )
                 .into();
                 state

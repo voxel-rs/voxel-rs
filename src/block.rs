@@ -1,17 +1,36 @@
 //! Various `Block`- and `Chunk`-related data structures.
-
 use crate::texture::TextureRegistry;
-use crate::{Vertex, CHUNK_SIZE};
+use crate::Vertex;
 use serde_derive::{Deserialize, Serialize};
-use std::collections::HashMap;
+use derive_more::{From};
+use crate::util::Faces;
 
 /// Block representation
 pub trait Block {
-    /// Append the block's vertices to the current Vertex Buffers
+    /// Append the block's vertices to the rendering Vertex Buffers
     /// TODO: Use the Vertex type instead of Vec<>
-    fn render(&self, vertices: &mut Vec<Vertex>, adj: u8, delta: [u64; 3]);
+    fn render(&self, vertices: &mut Vec<Vertex>, adj: Faces, delta: [u64; 3]);
     /// Does this block hide adjacent blocks ?
     fn is_opaque(&self) -> bool;
+    /// What state of matter is this block (matters for physics)
+    fn state(&self) -> MatterState;
+    /// What shape this block's collider is (for now only cubes are supported)
+    fn shape(&self) -> BlockShape {
+        BlockShape::Cube
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
+pub enum BlockShape {
+    Cube
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
+pub enum MatterState {
+    Gas,
+    Liquid,
+    Solid,
+    Vacuum
 }
 
 /// A block's id
@@ -19,95 +38,59 @@ pub trait Block {
 pub struct BlockId(pub u16);
 
 pub struct BlockRegistry {
-    blocks: Vec<BlockRef>,
+    blocks: Vec<BlockObj>,
 }
 
-pub type ChunkFragment = [BlockId; CHUNK_SIZE];
-pub type ChunkArray = [[ChunkFragment; CHUNK_SIZE]; CHUNK_SIZE];
-pub type ChunkSidesArray = [[[u8; CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE];
 pub type BlockRef = Box<Block + Send + Sync>;
-/// Indicates what non-void ```ChunkFragment```s a Chunk contains.
-/// It is stored as 32-bit integers so that common functions are implemented.
-pub type ChunkInfo = [u32; CHUNK_SIZE * CHUNK_SIZE / 32];
-pub type ChunkMap = HashMap<ChunkPos, ChunkState>;
 
-pub enum ChunkState {
-    Generating,
-    Generated(Box<ChunkArray>),
+#[derive(From)]
+pub enum BlockObj {
+    Gas(BlockGas),
+    Cube(BlockCube),
+    Dynamic(BlockRef)
 }
 
-
-/// Chunk type
-#[derive(Clone, Debug)]
-pub struct Chunk {
-    /// Blocks in the chunk
-    pub blocks: Box<ChunkArray>,
-    /// Empty blocks adjacent to the chunk (1 is for non-opaque, 0 is for opaque)
-    pub sides: Box<ChunkSidesArray>,
+impl Block for BlockObj {
+    fn render(&self, vertices: &mut Vec<Vertex>, adj: Faces, delta: [u64; 3]) {
+        match self {
+            BlockObj::Gas(g) => g.render(vertices, adj, delta),
+            BlockObj::Cube(c) => c.render(vertices, adj, delta),
+            BlockObj::Dynamic(r) => r.render(vertices, adj, delta)
+        }
+    }
+    fn is_opaque(&self) -> bool {
+        match self {
+            BlockObj::Gas(g) => g.is_opaque(),
+            BlockObj::Cube(c) => c.is_opaque(),
+            BlockObj::Dynamic(r) => r.is_opaque()
+        }
+    }
+    fn state(&self) -> MatterState {
+        match self {
+            BlockObj::Gas(g) => g.state(),
+            BlockObj::Cube(c) => c.state(),
+            BlockObj::Dynamic(r) => r.state()
+        }
+    }
 }
-
-// TODO: Struct instead ?
-#[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
-pub struct ChunkPos(pub [i64; 3]);
-
-#[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
-pub struct FragmentPos(pub [usize; 2]);
 
 pub struct BlockCube {
     uvs: [[[f32; 2]; 4]; 6],
 }
 
-pub struct BlockAir {}
+pub struct BlockGas {}
 impl BlockRegistry {
     pub fn new() -> BlockRegistry {
         BlockRegistry { blocks: Vec::new() }
     }
 
-    pub fn add_block(&mut self, block: BlockRef) -> BlockId {
+    pub fn add_block(&mut self, block: BlockObj) -> BlockId {
         self.blocks.push(block);
         BlockId::from((self.blocks.len() - 1) as u16)
     }
 
-    pub fn get_block(&self, id: BlockId) -> &BlockRef {
+    pub fn get_block(&self, id: BlockId) -> &BlockObj {
         &self.blocks[id.0 as usize]
-    }
-}
-
-impl Chunk {
-    pub fn new() -> Chunk {
-        Chunk {
-            blocks: Box::new([[[BlockId(0); CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE]),
-            sides: Box::new([[[0b00000000; CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE]),
-        }
-    }
-
-    pub fn calculate_mesh(&self, blocks: &BlockRegistry) -> Vec<Vertex> {
-        let mut vec: Vec<Vertex> = Vec::new();
-        for i in 0..CHUNK_SIZE {
-            for j in 0..CHUNK_SIZE {
-                for k in 0..CHUNK_SIZE {
-                    // Don't render hidden blocks
-                    if self.sides[i][j][k] != 0xFF {
-                        blocks.get_block(self.blocks[i][j][k]).render(
-                            &mut vec,
-                            self.sides[i][j][k],
-                            [i as u64, j as u64, k as u64],
-                        );
-                    }
-                }
-            }
-        }
-        vec
-    }
-}
-
-impl ChunkPos {
-    pub fn orthogonal_dist(self, other: ChunkPos) -> u64 {
-        let mut maxcoord = 0;
-        for i in 0..3 {
-            maxcoord = i64::max(maxcoord, (other.0[i] - self.0[i]).abs());
-        }
-        maxcoord as u64
     }
 }
 
@@ -118,9 +101,9 @@ impl From<u16> for BlockId {
 }
 
 impl Block for BlockCube {
-    fn render(&self, vertices: &mut Vec<Vertex>, adj: u8, delta: [u64; 3]) {
-        for face in 0..6 {
-            if adj & (1 << face) > 0 {
+    fn render(&self, vertices: &mut Vec<Vertex>, adj: Faces, delta: [u64; 3]) {
+        for face in Faces::all().iter() {
+            if !(adj & face).is_empty() {
                 let side = &FACES[face as usize];
                 for &pos in &FACE_ORDER {
                     let mut coords = VERTICES[side[pos]];
@@ -141,6 +124,10 @@ impl Block for BlockCube {
     fn is_opaque(&self) -> bool {
         true
     }
+
+    fn state(&self) -> MatterState {
+        MatterState::Solid
+    }
 }
 
 /// Create a solid block with the provided textures
@@ -158,15 +145,19 @@ pub fn create_block_cube(texture_names: [&str; 6], textures: &TextureRegistry) -
 }
 
 /// Create an air block
-pub fn create_block_air() -> BlockAir {
-    BlockAir {}
+pub fn create_block_air() -> BlockGas {
+    BlockGas {}
 }
 
-impl Block for BlockAir {
-    fn render(&self, _: &mut Vec<Vertex>, _: u8, _: [u64; 3]) {}
+impl Block for BlockGas {
+    fn render(&self, _: &mut Vec<Vertex>, _: Faces, _: [u64; 3]) {}
 
     fn is_opaque(&self) -> bool {
         false
+    }
+
+    fn state(&self) -> MatterState {
+        MatterState::Gas
     }
 }
 

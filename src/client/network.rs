@@ -77,22 +77,23 @@ where
                 ClientEvent::Connection => (),
                 ClientEvent::ConnectionClosed => panic!("Connection closed"),
                 ClientEvent::Message(msg) => {
-                    //println!("Network: received event {:?}", message);
+                    //println!("Network: received event {:?}", msg);
                     match bincode::deserialize(msg.as_ref()).unwrap() {
-                        ToClient::NewChunkFragment(pos, fpos, frag) => {
+                        ToClient::NewChunkFragment(pos, fpos, frag, hot) => {
                             //println!("Network: received chunk fragment @ {:?}, {:?}", pos, fpos);
                             self.input_tx
                                 .send(ToInput::NewChunkFragment(
                                     pos,
                                     fpos,
                                     deserialize_fragment(&frag[..]),
+                                    hot
                                 ))
                                 .unwrap();
                         }
-                        ToClient::NewChunkInfo(pos, info) => {
+                        ToClient::NewChunkInfo(pos, info, version) => {
                             //println!("Received ChunkInfo @ {:?}", pos);
                             self.input_tx
-                                .send(ToInput::NewChunkInfo(pos, info))
+                                .send(ToInput::NewChunkInfo(pos, info, version))
                                 .unwrap();
                         }
                         ToClient::SetPos(pos) => {

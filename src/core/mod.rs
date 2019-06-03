@@ -3,8 +3,9 @@
 pub mod messages {
     /// Client-to-client messages.
     pub mod client {
-        use crate::block::{Chunk, ChunkFragment, ChunkInfo, ChunkPos, FragmentPos};
-        use crate::player::{PlayerInput, PlayerPos};
+        use crate::sim::chunk::{ChunkFragment, ChunkPos, FragmentPos, WorldPos};
+        use crate::client::input::chunk::{Chunk, ChunkInfo};
+        use crate::sim::player::{PlayerInput};
         use crate::Vertex;
 
         pub enum ToNetwork {
@@ -14,9 +15,9 @@ pub mod messages {
 
         pub enum ToInput {
             NewChunkBuffer(ChunkPos, Vec<Vertex>),
-            NewChunkFragment(ChunkPos, FragmentPos, Box<ChunkFragment>),
-            NewChunkInfo(ChunkPos, ChunkInfo),
-            SetPos(PlayerPos),
+            NewChunkFragment(ChunkPos, FragmentPos, Box<ChunkFragment>, u64),
+            NewChunkInfo(ChunkPos, ChunkInfo, u64),
+            SetPos(WorldPos),
         }
 
         pub enum ToMeshing {
@@ -26,15 +27,16 @@ pub mod messages {
 
     /// Client-to-server and server-to-client messages.
     pub mod network {
-        use crate::block::{ChunkInfo, ChunkPos, FragmentPos};
-        use crate::player::{PlayerInput, PlayerPos};
+        use crate::sim::chunk::{ChunkPos, FragmentPos, WorldPos};
+        use crate::sim::player::PlayerInput;
+        use crate::client::input::chunk::{ChunkInfo};
         use serde_derive::{Deserialize, Serialize};
 
         #[derive(Serialize, Deserialize)]
         pub enum ToClient {
-            NewChunkFragment(ChunkPos, FragmentPos, Vec<u8>),
-            NewChunkInfo(ChunkPos, ChunkInfo),
-            SetPos(PlayerPos),
+            NewChunkFragment(ChunkPos, FragmentPos, Vec<u8>, u64),
+            NewChunkInfo(ChunkPos, ChunkInfo, u64),
+            SetPos(WorldPos),
         }
 
         #[derive(Serialize, Deserialize)]
@@ -46,19 +48,19 @@ pub mod messages {
 
     /// Server-to-server messages.
     pub mod server {
-        use crate::block::{ChunkArray, ChunkPos};
+        use crate::sim::chunk::{ChunkContents, ChunkPos, WorldPos, Chunk};
         use crate::network::ConnectionId;
-        use crate::player::{PlayerInput, PlayerPos};
+        use crate::sim::player::PlayerInput;
 
         pub enum ToNetwork {
-            NewChunk(ConnectionId, ChunkPos, Box<ChunkArray>),
-            SetPos(ConnectionId, PlayerPos),
+            NewChunk(ConnectionId, ChunkPos, ChunkContents),
+            SetPos(ConnectionId, WorldPos),
         }
 
         #[derive(Debug)]
         pub enum ToGame {
             PlayerEvent(ConnectionId, ToGamePlayer),
-            NewChunk(ChunkPos, Box<ChunkArray>),
+            NewChunk(ChunkPos, Chunk, bool),
         }
 
         #[derive(Debug)]
